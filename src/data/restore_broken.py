@@ -1,49 +1,41 @@
 """
-ChefAI - brokendata/ icindeki TUM gorselleri images/ altina geri tasir.
-Hicbir kontrol yapmaz. Ayni isimde dosya varsa uzerine yazar.
+ChefAI - data/brokendata/ icindeki TUM gorselleri data/raw/ altina geri tasir.
+Hicbir kontrol yapmaz.
+
+Kullanim:
+    poetry run python src/data/restore_broken.py
 """
 
 import shutil
 from pathlib import Path
 
-# -------------------------------------------------------------------
-# PATHS
-# -------------------------------------------------------------------
 SCRIPT_DIR = Path(__file__).resolve().parent
-PROJECT_ROOT = SCRIPT_DIR.parent
-IMAGES_DIR = PROJECT_ROOT / "images"
-BROKEN_DIR = PROJECT_ROOT / "brokendata"
+PROJECT_ROOT = SCRIPT_DIR.parent.parent
+DATA_DIR = PROJECT_ROOT / "data"
+RAW_DIR = DATA_DIR / "raw"
+BROKEN_DIR = DATA_DIR / "brokendata"
 
 
-# -------------------------------------------------------------------
-# MAIN
-# -------------------------------------------------------------------
-def main():
+def main() -> None:
     print(f"Broken dir: {BROKEN_DIR}")
-    print(f"Images dir: {IMAGES_DIR}")
+    print(f"Raw dir   : {RAW_DIR}")
     print()
 
     if not BROKEN_DIR.exists():
-        print("brokendata/ yok, islem yapilamiyor.")
+        print("brokendata/ yok.")
         return
 
     class_dirs = sorted([p for p in BROKEN_DIR.iterdir() if p.is_dir()])
-
     if not class_dirs:
-        print("brokendata/ bos, tasinacak gorsel yok.")
+        print("brokendata/ bos.")
         return
-
-    print(f"brokendata/ icinde {len(class_dirs)} sinif klasoru var.")
-    print()
 
     print(f"{'Sinif':<25} {'Tasinan':>10}")
     print("-" * 40)
 
     grand_total = 0
-
     for class_dir in class_dirs:
-        class_name = class_dir.name
-        target_dir = IMAGES_DIR / class_name
+        target_dir = RAW_DIR / class_dir.name
         target_dir.mkdir(parents=True, exist_ok=True)
 
         moved = 0
@@ -57,9 +49,8 @@ def main():
                 print(f"  HATA: {img_path.name}: {e}")
 
         grand_total += moved
-        print(f"{class_name:<25} {moved:>10}")
+        print(f"{class_dir.name:<25} {moved:>10}")
 
-        # Bosalan klasoru sil
         try:
             class_dir.rmdir()
         except Exception:
@@ -69,15 +60,14 @@ def main():
     print(f"{'TOPLAM':<25} {grand_total:>10}")
     print()
 
-    # brokendata/ bosaldiysa sil
     try:
         BROKEN_DIR.rmdir()
         print("brokendata/ silindi.")
     except Exception:
-        print("brokendata/ hala bos degil (bazi dosyalar tasinamadi).")
+        print("brokendata/ hala bos degil.")
 
     print()
-    print("Sonraki adim: python Meta/info.py")
+    print("Sonraki adim: poetry run python src/data/report_status.py")
 
 
 if __name__ == "__main__":

@@ -61,3 +61,11 @@ line_length = 100
 max-line-length = 100
 extend-ignore = ["E203", "W503"]
 exclude = [".git", "__pycache__", "venv", "mlruns"]
+
+[tool.pyright]
+include = ["src"]
+exclude = [".git", "__pycache__", "data", "mlruns", "notebooks", ".venv", "venv"]
+pythonVersion = "3.12"
+typeCheckingMode = "basic"
+reportMissingImports = "warning"
+reportMissingModuleSource = "none"

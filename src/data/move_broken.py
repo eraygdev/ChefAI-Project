@@ -1,9 +1,9 @@
 """
-ChefAI - Bozuk ve cok kucuk gorselleri brokendata/ altina tasir.
+ChefAI - Bozuk ve cok kucuk gorselleri data/brokendata/ altina tasir.
 Her sinif kendi alt klasorunde korunur: brokendata/<sinif_adi>/
-images/ icindeki orijinal klasorler bozulmaz, sadece sorunlu gorseller cikar.
 
-NOT: OCR devre disi. Yazi/filigran temizligi egitimde RandomErasing ile yapilir.
+Kullanim:
+    poetry run python src/data/move_broken.py
 """
 
 import shutil
@@ -15,26 +15,27 @@ from PIL import Image
 # PATHS / YOLLAR
 # -------------------------------------------------------------------
 SCRIPT_DIR = Path(__file__).resolve().parent
-PROJECT_ROOT = SCRIPT_DIR.parent
-IMAGES_DIR = PROJECT_ROOT / "images"
-BROKEN_DIR = PROJECT_ROOT / "brokendata"
+PROJECT_ROOT = SCRIPT_DIR.parent.parent  # src/data/ -> src/ -> proje koku
+DATA_DIR = PROJECT_ROOT / "data"
+RAW_DIR = DATA_DIR / "raw"
+BROKEN_DIR = DATA_DIR / "brokendata"
 
 # -------------------------------------------------------------------
 # SETTINGS / AYARLAR
 # -------------------------------------------------------------------
 MIN_SIZE = 200
-IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".bmp"}
+IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".bmp", ".gif"}
 
 
 # -------------------------------------------------------------------
 # CHECK FUNCTIONS
 # -------------------------------------------------------------------
 def is_broken(path: Path) -> bool:
-    """Gorsel bozuk mu? (TUM piksel verisini okuyarak kontrol)"""
+    """Gorsel bozuk mu? (tum piksel verisini okuyarak)"""
     try:
-        img = Image.open(path)
-        img.load()  # Piksel verisini yukle (bozuklari yakalar)
-        img.verify()  # Header kontrolu
+        with Image.open(path) as img:
+            img.load()
+            img.verify()
         return False
     except Exception:
         return True
@@ -43,8 +44,8 @@ def is_broken(path: Path) -> bool:
 def is_too_small(path: Path) -> bool:
     """Gorsel cok kucuk mu?"""
     try:
-        img = Image.open(path)
-        w, h = img.size
+        with Image.open(path) as img:
+            w, h = img.size
         return w < MIN_SIZE or h < MIN_SIZE
     except Exception:
         return True
@@ -53,7 +54,7 @@ def is_too_small(path: Path) -> bool:
 # -------------------------------------------------------------------
 # MOVE FUNCTION
 # -------------------------------------------------------------------
-def move_to_broken(path: Path, class_name: str, reason: str, counter: dict):
+def move_to_broken(path: Path, class_name: str, reason: str, counter: dict) -> None:
     """Gorseli brokendata/<class_name>/ altina tasir."""
     target_dir = BROKEN_DIR / class_name
     target_dir.mkdir(parents=True, exist_ok=True)
@@ -78,18 +79,17 @@ def move_to_broken(path: Path, class_name: str, reason: str, counter: dict):
 # -------------------------------------------------------------------
 # MAIN
 # -------------------------------------------------------------------
-def main():
-    print(f"Images dir  : {IMAGES_DIR}")
+def main() -> None:
+    print(f"Raw dir     : {RAW_DIR}")
     print(f"Broken dir  : {BROKEN_DIR}")
     print(f"Min size    : {MIN_SIZE}x{MIN_SIZE}")
-    print(f"OCR aktif   : False")
     print()
 
-    if not IMAGES_DIR.exists():
-        print("HATA: images/ klasoru yok!")
+    if not RAW_DIR.exists():
+        print(f"HATA: {RAW_DIR} yok!")
         return
 
-    classes = sorted([p for p in IMAGES_DIR.iterdir() if p.is_dir()])
+    classes = sorted([p for p in RAW_DIR.iterdir() if p.is_dir()])
     print(f"Sinif sayisi: {len(classes)}")
     print()
 
@@ -105,16 +105,12 @@ def main():
         total = len(images)
 
         for img_path in images:
-            # 1. Bozuk mu? (agresif kontrol)
             if is_broken(img_path):
                 move_to_broken(img_path, class_name, "broken", counter)
                 continue
-
-            # 2. Cok kucuk mu?
             if is_too_small(img_path):
                 move_to_broken(img_path, class_name, "small", counter)
                 continue
-
             counter["kept"] += 1
 
         moved = counter["broken"] + counter["small"]
@@ -132,14 +128,14 @@ def main():
     print("=" * 60)
     print("TOPLAM")
     print("=" * 60)
-    print(f"Kalan (images/)     : {grand_total['kept']}")
-    print(f"Tasinan (brokendata/): {grand_total['broken'] + grand_total['small']}")
-    print(f"  - Bozuk           : {grand_total['broken']}")
-    print(f"  - Cok kucuk       : {grand_total['small']}")
+    print(f"Kalan (raw/)           : {grand_total['kept']}")
+    print(f"Tasinan (brokendata/)  : {grand_total['broken'] + grand_total['small']}")
+    print(f"  - Bozuk              : {grand_total['broken']}")
+    print(f"  - Cok kucuk          : {grand_total['small']}")
     print()
     print(f"Brokendata yolu: {BROKEN_DIR}")
     print()
-    print("Sonraki adim: python Meta/info.py")
+    print("Sonraki adim: poetry run python src/data/cleaner.py")
 
 
 if __name__ == "__main__":

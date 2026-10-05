@@ -5,7 +5,6 @@ Does NOT delete existing excess images.
 Uses: Google (with date filters) + Bing + Baidu + Flickr + DuckDuckGo.
 """
 
-import random
 import time
 from pathlib import Path
 
@@ -21,8 +20,9 @@ from icrawler.builtin import (
 # PATHS / YOLLAR
 # -------------------------------------------------------------------
 SCRIPT_DIR = Path(__file__).resolve().parent
-PROJECT_ROOT = SCRIPT_DIR.parent
-OUTPUT_DIR = PROJECT_ROOT / "images"
+PROJECT_ROOT = SCRIPT_DIR.parent.parent
+DATA_DIR = PROJECT_ROOT / "data"
+OUTPUT_DIR = DATA_DIR / "raw"
 
 # -------------------------------------------------------------------
 # SETTINGS / AYARLAR
