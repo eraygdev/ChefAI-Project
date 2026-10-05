@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.coverage
+
+# venv
+venv/
+.venv/
+
+# Data (DVC)
+/data/raw/
+/data/processed/
+/data/brokendata/
+/data/extradata/
+
+# Model
+/models/*.pth
+
+# MLflow
+mlruns/
+mlflow.db
+
+# Cache
+.cache/
+*.log
+
+# IDE
+.vscode/
+.idea/
+
+# DVC
+*.dvc
+.dvc/
