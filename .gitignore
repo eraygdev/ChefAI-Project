@@ -5,32 +5,58 @@ __pycache__/
 .pytest_cache/
 .mypy_cache/
 .coverage
+htmlcov/
 
 # venv
 venv/
 .venv/
+env/
+
+# Jupyter
+.ipynb_checkpoints/
 
 # Data (DVC)
 /data/raw/
 /data/processed/
 /data/brokendata/
 /data/extradata/
+!data/.gitkeep
 
 # Model
 /models/*.pth
+/models/*.pt
+/models/*.onnx
+!models/.gitkeep
 
 # MLflow
 mlruns/
+mlartifacts/
 mlflow.db
 
 # Cache
 .cache/
 *.log
+logs/
 
 # IDE
 .vscode/
 .idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env
+.env
+.env.local
 
 # DVC
 *.dvc
 .dvc/
+.dvc/cache/
+.dvc/tmp/
+
+# Monitoring
+monitoring/data/
+monitoring/reports/
