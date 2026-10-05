@@ -1,0 +1,65 @@
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+
+# venv
+venv/
+.venv/
+env/
+
+# Data
+data/raw/
+data/processed/
+data/brokendata/
+data/extradata/
+
+# MLflow
+mlruns/
+mlartifacts/
+mlflow.db
+
+# Model artifacts
+models/*.pt
+models/*.pth
+models/*.onnx
+
+# IDE
+.vscode/
+.idea/
+
+# Notebooks
+notebooks/
+*.ipynb
+
+# Docs
+docs/
+
+# Tests
+tests/
+
+# Cache
+.cache/
+*.log
+logs/
+
+# Env
+.env
+.env.local
+
+# Docker
+docker/docker-compose.yml
+
+# DVC
+.dvc/
+*.dvc
+
+# Monitoring
+monitoring/data/
+monitoring/reports/
