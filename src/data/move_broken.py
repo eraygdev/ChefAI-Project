@@ -8,6 +8,7 @@ NOT: OCR devre disi. Yazi/filigran temizligi egitimde RandomErasing ile yapilir.
 
 import shutil
 from pathlib import Path
+
 from PIL import Image
 
 # -------------------------------------------------------------------
@@ -22,7 +23,7 @@ BROKEN_DIR = PROJECT_ROOT / "brokendata"
 # SETTINGS / AYARLAR
 # -------------------------------------------------------------------
 MIN_SIZE = 200
-IMAGE_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.webp', '.bmp'}
+IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".bmp"}
 
 
 # -------------------------------------------------------------------
@@ -32,8 +33,8 @@ def is_broken(path: Path) -> bool:
     """Gorsel bozuk mu? (TUM piksel verisini okuyarak kontrol)"""
     try:
         img = Image.open(path)
-        img.load()          # Piksel verisini yukle (bozuklari yakalar)
-        img.verify()        # Header kontrolu
+        img.load()  # Piksel verisini yukle (bozuklari yakalar)
+        img.verify()  # Header kontrolu
         return False
     except Exception:
         return True
@@ -96,8 +97,9 @@ def main():
 
     for class_dir in classes:
         class_name = class_dir.name
-        images = [p for p in class_dir.iterdir()
-                  if p.is_file() and p.suffix.lower() in IMAGE_EXTENSIONS]
+        images = [
+            p for p in class_dir.iterdir() if p.is_file() and p.suffix.lower() in IMAGE_EXTENSIONS
+        ]
 
         counter = {"broken": 0, "small": 0, "kept": 0}
         total = len(images)
@@ -116,10 +118,12 @@ def main():
             counter["kept"] += 1
 
         moved = counter["broken"] + counter["small"]
-        print(f"[{class_name}] {total} gorsel -> "
-              f"Kalan: {counter['kept']}, "
-              f"Tasinan: {moved} "
-              f"(bozuk={counter['broken']}, kucuk={counter['small']})")
+        print(
+            f"[{class_name}] {total} gorsel -> "
+            f"Kalan: {counter['kept']}, "
+            f"Tasinan: {moved} "
+            f"(bozuk={counter['broken']}, kucuk={counter['small']})"
+        )
 
         for k in grand_total:
             grand_total[k] += counter[k]

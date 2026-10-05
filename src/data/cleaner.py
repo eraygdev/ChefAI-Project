@@ -8,6 +8,7 @@ ChefAI - Gorsel temizleme.
 import hashlib
 import warnings
 from pathlib import Path
+
 from PIL import Image
 from tqdm import tqdm
 
@@ -25,9 +26,9 @@ IMAGES_DIR = PROJECT_ROOT / "images"
 # SETTINGS
 # -------------------------------------------------------------------
 MIN_SIZE = 200
-TARGET_COUNT = None         # None = fazlaliklari silme, sayi = o sayiya dusur
+TARGET_COUNT = None  # None = fazlaliklari silme, sayi = o sayiya dusur
 SEED = 42
-IMAGE_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.webp', '.bmp'}
+IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".bmp"}
 
 
 # -------------------------------------------------------------------
@@ -36,12 +37,17 @@ IMAGE_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.webp', '.bmp'}
 def clean_class(folder: Path) -> dict:
     """Bir sinifi temizler. Istatistik dondurur."""
     stats = {
-        "broken": 0, "small": 0, "dup": 0, "excess": 0,
-        "kept": 0, "before": 0, "after": 0, "errors": 0,
+        "broken": 0,
+        "small": 0,
+        "dup": 0,
+        "excess": 0,
+        "kept": 0,
+        "before": 0,
+        "after": 0,
+        "errors": 0,
     }
 
-    images = [p for p in folder.iterdir()
-              if p.is_file() and p.suffix.lower() in IMAGE_EXTENSIONS]
+    images = [p for p in folder.iterdir() if p.is_file() and p.suffix.lower() in IMAGE_EXTENSIONS]
     stats["before"] = len(images)
 
     # 1. Bozuk ve kucuk sil
@@ -98,6 +104,7 @@ def clean_class(folder: Path) -> dict:
     # 3. Fazlalik sil (TARGET_COUNT ayarliysa)
     if TARGET_COUNT and len(unique) > TARGET_COUNT:
         import random
+
         random.seed(SEED)
         random.shuffle(unique)
         for p in unique[TARGET_COUNT:]:
@@ -106,8 +113,9 @@ def clean_class(folder: Path) -> dict:
         unique = unique[:TARGET_COUNT]
 
     stats["kept"] = len(unique)
-    stats["after"] = len([p for p in folder.iterdir()
-                          if p.is_file() and p.suffix.lower() in IMAGE_EXTENSIONS])
+    stats["after"] = len(
+        [p for p in folder.iterdir() if p.is_file() and p.suffix.lower() in IMAGE_EXTENSIONS]
+    )
     return stats
 
 
@@ -128,7 +136,9 @@ def main():
     print(f"Sinif sayisi: {len(classes)}")
     print()
 
-    print(f"{'Sinif':<25} {'Once':>6} {'Sonra':>6} {'Bozuk':>6} {'Kucuk':>6} {'Dup':>5} {'Fazla':>6}")
+    print(
+        f"{'Sinif':<25} {'Once':>6} {'Sonra':>6} {'Bozuk':>6} {'Kucuk':>6} {'Dup':>5} {'Fazla':>6}"
+    )
     print("-" * 78)
 
     totals = {"before": 0, "after": 0, "broken": 0, "small": 0, "dup": 0, "excess": 0}
@@ -138,18 +148,22 @@ def main():
         for k in totals:
             totals[k] += s[k]
 
-        print(f"{class_dir.name:<25} "
-              f"{s['before']:>6} {s['after']:>6} "
-              f"{s['broken']:>6} {s['small']:>6} {s['dup']:>5} {s['excess']:>6}")
+        print(
+            f"{class_dir.name:<25} "
+            f"{s['before']:>6} {s['after']:>6} "
+            f"{s['broken']:>6} {s['small']:>6} {s['dup']:>5} {s['excess']:>6}"
+        )
 
     print("-" * 78)
-    print(f"{'TOPLAM':<25} "
-          f"{totals['before']:>6} {totals['after']:>6} "
-          f"{totals['broken']:>6} {totals['small']:>6} "
-          f"{totals['dup']:>5} {totals['excess']:>6}")
+    print(
+        f"{'TOPLAM':<25} "
+        f"{totals['before']:>6} {totals['after']:>6} "
+        f"{totals['broken']:>6} {totals['small']:>6} "
+        f"{totals['dup']:>5} {totals['excess']:>6}"
+    )
     print()
 
-    total_removed = (totals['before'] - totals['after'])
+    total_removed = totals["before"] - totals["after"]
     print(f"Silinen toplam gorsel: {total_removed}")
     print(f"Kalan toplam gorsel  : {totals['after']}")
 

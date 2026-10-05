@@ -1,4 +1,3 @@
-
 """
 ChefAI - Yemek Gorselleri Indirme Scripti
 Her yemek kendi klasorune iner. Google ve Bing uzerinden cekim yapar.
@@ -6,15 +5,16 @@ Her yemek kendi klasorune iner. Google ve Bing uzerinden cekim yapar.
 
 import os
 from pathlib import Path
-from icrawler.builtin import GoogleImageCrawler, BingImageCrawler
+
+from icrawler.builtin import BingImageCrawler, GoogleImageCrawler
 
 # -------------------------------------------------------------------
 # AYARLAR
 # -------------------------------------------------------------------
 CIKTI_KLASORU = "data/raw"
-HER_YEMEK_ICIN = 250          # Once 250 cek, sonra temizleyip 150-200'e dusur
-KULLAN_GOOGLE = True          # Google kullan
-KULLAN_BING = True            # Bing de kullan (yedek / ek kaynak)
+HER_YEMEK_ICIN = 250  # Once 250 cek, sonra temizleyip 150-200'e dusur
+KULLAN_GOOGLE = True  # Google kullan
+KULLAN_BING = True  # Bing de kullan (yedek / ek kaynak)
 
 # -------------------------------------------------------------------
 # YEMEK LISTESI (klasor adi : arama terimi)
@@ -22,48 +22,42 @@ KULLAN_BING = True            # Bing de kullan (yedek / ek kaynak)
 # -------------------------------------------------------------------
 YEMEKLER = {
     # --- Corbalar ---
-    "mercimek_corbasi":    "mercimek çorbası",
-    "ezogelin_corbasi":    "ezogelin çorbası",
-    "domates_corbasi":     "domates çorbası",
-    "tavuk_suyu_corba":    "tavuk suyu çorba",
-
+    "mercimek_corbasi": "mercimek çorbası",
+    "ezogelin_corbasi": "ezogelin çorbası",
+    "domates_corbasi": "domates çorbası",
+    "tavuk_suyu_corba": "tavuk suyu çorba",
     # --- Ana Yemek - Et ve Tavuk ---
-    "izgara_tavuk":        "ızgara tavuk",
-    "kofte":               "köfte",
-    "tavuk_sote":          "tavuk sote",
-    "etli_nohut":          "etli nohut",
-    "karniyarik":          "karnıyarık",
-    "manti":               "mantı",
-
+    "izgara_tavuk": "ızgara tavuk",
+    "kofte": "köfte",
+    "tavuk_sote": "tavuk sote",
+    "etli_nohut": "etli nohut",
+    "karniyarik": "karnıyarık",
+    "manti": "mantı",
     # --- Ana Yemek - Sebze ---
     "zeytinyagli_fasulye": "zeytinyağlı yeşil fasulye",
-    "imam_bayildi":        "imam bayıldı",
-    "menemen":             "menemen",
-    "kisir":               "kısır",
-    "firin_sebze":         "fırında sebze",
-
+    "imam_bayildi": "imam bayıldı",
+    "menemen": "menemen",
+    "kisir": "kısır",
+    "firin_sebze": "fırında sebze",
     # --- Hamur Isleri ---
-    "pizza":               "pizza",
-    "pide":                "türk pidesi",
-    "borek":               "börek",
-    "pogaca":              "poğaça",
-    "gozleme":             "gözleme",
-
+    "pizza": "pizza",
+    "pide": "türk pidesi",
+    "borek": "börek",
+    "pogaca": "poğaça",
+    "gozleme": "gözleme",
     # --- Pilav ve Makarna ---
-    "pirinc_pilavi":       "pirinç pilavı",
-    "bulgur_pilavi":       "bulgur pilavı",
-    "spagetti_bolonez":    "spaghetti bolognese",
-    "fettuccine_alfredo":  "fettuccine alfredo",
-
+    "pirinc_pilavi": "pirinç pilavı",
+    "bulgur_pilavi": "bulgur pilavı",
+    "spagetti_bolonez": "spaghetti bolognese",
+    "fettuccine_alfredo": "fettuccine alfredo",
     # --- Kahvaltilik ---
-    "omlet":               "omlet",
-    "pankek":              "pankek",
-    "avokado_tost":        "avocado toast",
-
+    "omlet": "omlet",
+    "pankek": "pankek",
+    "avokado_tost": "avocado toast",
     # --- Tatlilar ---
-    "kek":                 "kek dilimi",
-    "kurabiye":            "kurabiye",
-    "sutlac":              "sütlaç",
+    "kek": "kek dilimi",
+    "kurabiye": "kurabiye",
+    "sutlac": "sütlaç",
 }
 
 
@@ -87,7 +81,7 @@ def gorsel_indir(klasor_adi: str, arama_terimi: str, adet: int):
                 feeder_threads=1,
                 parser_threads=1,
                 downloader_threads=4,
-                storage={"root_dir": str(klasor_yolu)}
+                storage={"root_dir": str(klasor_yolu)},
             )
             google_crawler.crawl(
                 keyword=arama_terimi,
@@ -106,7 +100,7 @@ def gorsel_indir(klasor_adi: str, arama_terimi: str, adet: int):
                 feeder_threads=1,
                 parser_threads=1,
                 downloader_threads=4,
-                storage={"root_dir": str(klasor_yolu)}
+                storage={"root_dir": str(klasor_yolu)},
             )
             bing_crawler.crawl(
                 keyword=arama_terimi,

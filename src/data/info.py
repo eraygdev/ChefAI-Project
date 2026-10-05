@@ -6,13 +6,13 @@ images/ icindeki yemekleri ve sayilarini gösterir.
 Eger data/ hala varsa uyari verir, silmek isteyip istemedigini sorar.
 """
 
-from pathlib import Path
 import shutil
+from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 PROJE_KOKU = SCRIPT_DIR.parent
 
-GORSEL_UZANTI = {'.jpg', '.jpeg', '.png', '.webp', '.bmp'}
+GORSEL_UZANTI = {".jpg", ".jpeg", ".png", ".webp", ".bmp"}
 
 
 def gorsel_sayisi(klasor: Path) -> int:
