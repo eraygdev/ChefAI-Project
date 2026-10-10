@@ -59,7 +59,7 @@ ENGINES = {
 # SELECTED CLASSES / SECILEN SINIFLAR
 # Bos birakilirsa TUM 30 sinif taranir.
 # -------------------------------------------------------------------
-SELECTED = []  # bos = hepsi
+SELECTED: list[str] = []  # bos = hepsi
 
 # -------------------------------------------------------------------
 # FOOD LIST / YEMEK LISTESI

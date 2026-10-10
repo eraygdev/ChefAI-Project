@@ -128,7 +128,6 @@ EXCLUDE_EXTENSIONS: set[str] = {
     ".arff",
     ".npy",
     ".npz",
-    ".pkl",
     ".bin",
     ".exe",
     ".o",
@@ -215,7 +214,7 @@ def read_text_safe(path: Path) -> str | None:
         return None
 
 
-def human_size(n: int) -> str:
+def human_size(n: float) -> str:
     """Byte'i okunabilir hale getir."""
     for unit in ["B", "KB", "MB", "GB"]:
         if n < 1024:

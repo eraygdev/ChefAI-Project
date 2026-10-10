@@ -46,7 +46,7 @@ def is_too_small(path: Path) -> bool:
     try:
         with Image.open(path) as img:
             w, h = img.size
-        return w < MIN_SIZE or h < MIN_SIZE
+        return bool(w < MIN_SIZE or h < MIN_SIZE)
     except Exception:
         return True
 
