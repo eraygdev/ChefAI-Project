@@ -23,7 +23,7 @@ services:
     restart: unless-stopped
 
   minio:
-    image: minio/minio:latest
+    image: bitnamilegacy/minio:latest  # veya pgsty/minio:latest
     container_name: chefai-minio
     ports:
       - "9000:9000"

@@ -8,7 +8,6 @@ Uses: Google (with date filters) + Bing + Baidu + Flickr + DuckDuckGo.
 import time
 from pathlib import Path
 
-import requests
 from icrawler.builtin import (
     BaiduImageCrawler,
     BingImageCrawler,
@@ -31,11 +30,6 @@ TARGET_COUNT = 220
 EXTRA_RATIO = 1.0
 MIN_DOWNLOAD = 50
 WAIT_SECONDS = 2.5
-DUCKDUCKGO_WAIT = 3.0
-DUCKDUCKGO_TIMEOUT = 10
-
-# DuckDuckGo destegi (opsiyonel, kuruluysa True yap)
-USE_DUCKDUCKGO = True
 
 # Tarih filtreleri: Google icin farkli yillar kullanilir (daha cesitli sonuclar)
 # (baslangic_yil, baslangic_ay, baslangic_gun), (bitis_yil, bitis_ay, bitis_gun)
@@ -52,7 +46,6 @@ ENGINES = {
     "bing": True,
     "baidu": True,
     "flickr": True,
-    "duckduckgo": True,  # USE_DUCKDUCKGO ile birlikte calisir
 }
 
 # -------------------------------------------------------------------
@@ -803,69 +796,11 @@ def download_flickr(folder: Path, query: str, count: int, offset: int, date_filt
         print(f"    Flickr ERROR: {e}")
 
 
-def download_duckduckgo(folder: Path, query: str, count: int, offset: int, date_filter=None):
-    """
-    DuckDuckGo gorsellerini indirir.
-    icrawler'da hazir crawler yok, kendi implementasyonumuz.
-    """
-    try:
-        from duckduckgo_search import DDGS
-    except ImportError:
-        print("    DuckDuckGo ERROR: 'duckduckgo-search' kurulu degil")
-        return
-
-    try:
-        with DDGS() as ddgs:
-            results = ddgs.images(
-                keywords=query,
-                max_results=count,
-                safesearch="off",
-            )
-            if not results:
-                return
-
-            downloaded = 0
-            for i, r in enumerate(results):
-                if downloaded >= count:
-                    break
-                url = r.get("image")
-                if not url:
-                    continue
-
-                # Uzantiyi URL'den al
-                ext = ".jpg"
-                for e in [".jpg", ".jpeg", ".png", ".webp"]:
-                    if url.lower().endswith(e):
-                        ext = e
-                        break
-
-                filename = folder / f"{offset + i:06d}{ext}"
-                if filename.exists():
-                    continue
-
-                try:
-                    headers = {"User-Agent": "Mozilla/5.0"}
-                    resp = requests.get(
-                        url, timeout=DUCKDUCKGO_TIMEOUT, headers=headers, stream=True
-                    )
-                    if resp.status_code == 200 and len(resp.content) > 5000:
-                        filename.write_bytes(resp.content)
-                        downloaded += 1
-                except Exception:
-                    continue
-
-        if downloaded > 0:
-            print(f"    DuckDuckGo '{query}': {downloaded} indirildi")
-    except Exception as e:
-        print(f"    DuckDuckGo ERROR: {e}")
-
-
 ENGINE_FUNCTIONS = {
     "google": download_google,
     "bing": download_bing,
     "baidu": download_baidu,
     "flickr": download_flickr,
-    "duckduckgo": download_duckduckgo,
 }
 
 
@@ -881,8 +816,6 @@ def download_until_target(folder: Path, queries: list, target: int, offset: int)
         return
 
     active_engines = [name for name, on in ENGINES.items() if on]
-    if USE_DUCKDUCKGO and "duckduckgo" not in active_engines:
-        active_engines.append("duckduckgo")
 
     if not active_engines:
         print("    ERROR: No active engines!")
@@ -925,10 +858,7 @@ def download_until_target(folder: Path, queries: list, target: int, offset: int)
                 engine_fn(folder, query, engine_share, offset + idx * 100000)
 
             idx += 1
-            if engine_name == "duckduckgo":
-                time.sleep(DUCKDUCKGO_WAIT)
-            else:
-                time.sleep(WAIT_SECONDS)
+            time.sleep(WAIT_SECONDS)
 
         after = count_images(folder)
         if after >= target:
@@ -947,7 +877,6 @@ def main():
     print(f"Output dir   : {OUTPUT_DIR}")
     print(f"Output exists: {OUTPUT_DIR.exists()}")
     print(f"Active engines: {[k for k, v in ENGINES.items() if v]}")
-    print(f"DuckDuckGo   : {'ON' if USE_DUCKDUCKGO else 'OFF'}")
     print(f"Selected classes: {len(SELECTED) if SELECTED else 'ALL (30)'}")
     print(f"Target/class : {TARGET_COUNT}")
     print()
