@@ -71,7 +71,7 @@ class TrainConfig:
     # Data
     data_dir: Path = PROCESSED_DIR
     num_workers: int = 2
-    pin_memory: bool = False
+    pin_memory: bool = True  # GPU varsa CPU->GPU transfer hizlanir (MX330'da +%5-10)
 
     # Training
     epochs: int = 35

@@ -61,7 +61,7 @@ MAX_LINE_GAP = 4
 
 # Dik aci tolerans
 ANGLE_TOLERANCE = 7
-MIN_PERP_PAIRS = 8
+MIN_PERP_PAIRS = 10   # 8'den 10'a: false positive azaltir (200/sinifta iyi veriyi koru)
 MAX_IMAGE_SIDE = 1280  # daha yuksek cozunurluk
 
 # -------------------------------------------------------------------

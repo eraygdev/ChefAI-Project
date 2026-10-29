@@ -9,7 +9,7 @@ sirasiyla gosterir. Her adimi sirayla calistir.
 
 Proje koku: `~/Masaustu/MLOps_Project`
 Poetry aktif olmali: `poetry --version`
-Veri konumu: `data/raw/` (30 sinif, hedef 250 gorsel/sinif)
+Veri konumu: `data/raw/` (30 sinif, hedef 200 gorsel/sinif)
 
 Kontrol:
 poetry run python src/data/report_status.py
@@ -53,7 +53,7 @@ Amac : Hash bazli karsilastirma ile ayni gorselleri siler.
 ## ADIM 4: Fazlaliklari Extradata'ya Tasi
 
 Script : `src/data/trim_to_extradata.py`
-Amac : Her sinifta 250'den fazla gorsel varsa, fazlasini
+Amac : Her sinifta 200'den fazla gorsel varsa, fazlasini
 `data/extradata/` altina tasir.
 Cikti : `data/extradata/<sinif>/`
 
@@ -71,7 +71,7 @@ guncel durumunu raporlar.
 
 Beklenen:
 
-- raw/ : 30 sinif, her biri ~250 gorsel
+- raw/ : 30 sinif, her biri ~200 gorsel
 - brokendata/: bozuk/kucuk gorseller
 - extradata/ : fazla gorseller
 
@@ -86,12 +86,12 @@ Cikti : `data/processed/{train,val,test}/<sinif>/`
 
     poetry run python src/data/split_dataset.py
 
-Beklenen (30 sinif x 250 gorsel):
+Beklenen (30 sinif x 200 gorsel):
 
-- train: 30 sinif x 200 gorsel = 6000
-- val : 30 sinif x 25 gorsel = 750
-- test : 30 sinif x 25 gorsel = 750
-- TOPLAM: 7500
+- train: 30 sinif x 160 gorsel = 4800
+- val : 30 sinif x 20 gorsel = 600
+- test : 30 sinif x 20 gorsel = 600
+- TOPLAM: 6000
 
 ---
 

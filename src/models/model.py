@@ -1,4 +1,4 @@
-"""ChefAI - EfficientNet-B0 model tanimi."""
+"""ChefAI - EfficientNetV2-B0 model tanimi."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ import torch.nn as nn
 
 
 def build_model(
-    model_name: str = "efficientnet_b0",
+    model_name: str = "tf_efficientnetv2_b0.in1k",
     num_classes: int = 30,
     pretrained: bool = True,
     dropout: float = 0.2,

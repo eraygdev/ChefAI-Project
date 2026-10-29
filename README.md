@@ -20,7 +20,7 @@ AMP mixed precision, num_workers 2.
 
 ## Veri Seti
 
-30 yemek sinifi, hedef 250 gorsel/sinif, toplam 7500 gorsel.
+30 yemek sinifi, hedef 200 gorsel/sinif, toplam 6000 gorsel.
 
 | Kategori | Siniflar | Adet |
 |----------|----------|------|
@@ -165,7 +165,7 @@ Tum komutlar proje kokunden (`~/Masaustu/MLOps_Project`) calisir.
     # Duplicate gorseller (hash bazli)
     poetry run python -m src.data.remove_duplicates
 
-    # Fazlaliklari extradata'ya tasi (250/sinif hedefi)
+    # Fazlaliklari extradata'ya tasi (200/sinif hedefi)
     poetry run python -m src.data.trim_to_extradata
 
     # Train/val/test bol
@@ -316,7 +316,7 @@ Her gorsel su asamalardan gecer:
 1. **move_suspicious**: Hough cizgi analizi ile filigran/menu karti tespit
 2. **move_broken**: PIL ile bozukluk + boyut kontrolu (200x200 minimum)
 3. **remove_duplicates**: MD5 hash ile birebir ayni gorseller
-4. **trim_to_extradata**: Sinif basina 250 gorsel hedefi
+4. **trim_to_extradata**: Sinif basina 200 gorsel hedefi
 5. **split_dataset**: Stratified %80/%10/%10
 6. **renumber_class**: 000001, 000002, ... formatinda
 

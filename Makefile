@@ -276,8 +276,8 @@ data-renumber:  ## Tum siniflari 000001, 000002... olarak yeniden numaralandir
 train:  ## Tam egitim (varsayilan 35 epoch, override: EPOCHS=N)
 	$(PYTHON) -m src.models.train --epochs $(EPOCHS) --batch-size $(BATCH_SIZE)
 
-train-quick:  ## Hizli test egitimi (2 epoch, MLflow yok)
-	$(PYTHON) -m src.models.train --epochs 2 --no-mlflow
+train-quick:  ## Hizli test egitimi (2 epoch, MLflow yok, EMA kapali)
+	$(PYTHON) -m src.models.train --epochs 2 --no-mlflow --no-ema
 
 train-bg:  ## Egitimi arka planda baslat (train.log'a yazar)
 	@nohup $(PYTHON) -m src.models.train --epochs $(EPOCHS) --batch-size $(BATCH_SIZE) > train.log 2>&1 &
@@ -320,10 +320,10 @@ mlflow-ui:  ## MLflow UI'yi tarayicida ac (localhost:5000)
 	 (echo "Manuel ac: http://localhost:5000")
 
 mlflow-runs:  ## Son MLflow run'larini listele
-	@$(PYTHON) scripts/mlflow_runs.py 2>/dev/null || echo "scripts/mlflow_runs.py yok"
+	@$(PYTHON) scripts/best_acc.py
 
 mlflow-promote:  ## En iyi modeli Production stage'e al
-	@$(PYTHON) -c "from mlflow.tracking import MlflowClient; c=MlflowClient('http://localhost:5000'); vs=c.search_model_versions('name=chefai-efficientnetv2_b0'); v=max(vs, key=lambda x: int(x.version)); c.transition_model_version_stage('chefai-efficientnetv2_b0', v.version, 'Production'); print(f'Model v{v.version} -> Production')" 2>/dev/null || echo "MLflow erisilemedi veya model yok"
+	@$(PYTHON) -c "from mlflow.tracking import MlflowClient; c=MlflowClient('http://localhost:5000'); name='chefai-tf_efficientnetv2_b0.in1k'; vs=c.search_model_versions(f'name={name}'); v=max(vs, key=lambda x: int(x.version)); c.transition_model_version_stage(name, v.version, 'Production'); print(f'Model {name} v{v.version} -> Production')" 2>/dev/null || echo "MLflow erisilemedi veya model yok"
 
 # ------------------------------------------------------------
 # EXPORT

@@ -96,9 +96,14 @@ def main() -> None:
         description="processed/{train,val,test}/ altindaki gorselleri raw/ altinda birlestir."
     )
     parser.add_argument(
+        "--copy",
+        action="store_true",
+        help="Tasimak yerine kopyala (DUPLICATE RISKI!)",
+    )
+    parser.add_argument(
         "--move",
         action="store_true",
-        help="Kopyalamak yerine tasi (processed/ bosalir)",
+        help="Tasi (varsayilan davranis; --copy ile ters)",
     )
     parser.add_argument(
         "--dry-run",
@@ -120,7 +125,8 @@ def main() -> None:
         print(f"Gecerli: {ALL_SPLITS}")
         sys.exit(1)
 
-    mode = "MOVE" if args.move else "COPY"
+    move_mode = not args.copy
+    mode = "MOVE" if move_mode else "COPY"
     print(f"Raw dir       : {RAW_DIR}")
     print(f"Processed dir : {PROCESSED_DIR}")
     print(f"Mod           : {mode}{' (DRY RUN)' if args.dry_run else ''}")
@@ -138,11 +144,11 @@ def main() -> None:
     grand: dict[str, int] = {"files": 0, "copied": 0, "moved": 0, "collisions": 0}
 
     for split in splits:
-        s = merge_split(split, not args.copy, args.dry_run)
+        s = merge_split(split, move_mode, args.dry_run)
         for k in grand:
             grand[k] += int(s[k])
 
-        action = "tasinacak" if args.move else "kopyalanacak"
+        action = "tasinacak" if move_mode else "kopyalanacak"
         print(f"  [{split:5s}] {s['files']:>5} dosya {action} (cakisma: {s['collisions']})")
 
     print()

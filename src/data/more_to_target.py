@@ -45,7 +45,9 @@ ENGINES = {
     "google": True,
     "bing": True,
     "baidu": True,
-    "flickr": True,
+    # Flickr icrawler API key ister; FLICKR_API_KEY env yoksa sessizce 0 indirir.
+    # .env'e FLICKR_API_KEY ekledikten sonra True yap.
+    "flickr": False,
 }
 
 # -------------------------------------------------------------------

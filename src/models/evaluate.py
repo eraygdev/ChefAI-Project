@@ -10,7 +10,7 @@ import torch
 from sklearn.metrics import classification_report, confusion_matrix
 from torch.utils.data import DataLoader
 
-from src.models.config import CLASS_TO_IDX, IDX_TO_CLASS, MODELS_DIR, PROCESSED_DIR
+from src.models.config import CLASS_TO_IDX, IDX_TO_CLASS, MODELS_DIR, PROCESSED_DIR, ModelConfig
 from src.models.dataset import FoodDataset, get_eval_transforms
 from src.models.model import build_model
 
@@ -27,7 +27,12 @@ def main() -> None:
     ckpt = torch.load(args.checkpoint, map_location=device, weights_only=False)
     print(f"Checkpoint: {args.checkpoint} (val_acc={ckpt.get('val_acc', '?')})")
 
-    model = build_model(pretrained=False)
+    model_cfg = ModelConfig()
+    model = build_model(
+        model_name=model_cfg.model_name,
+        num_classes=model_cfg.num_classes,
+        pretrained=False,
+    )
     model.load_state_dict(ckpt["model_state"])
     model = model.to(device)
     model.eval()
@@ -45,10 +50,15 @@ def main() -> None:
             images = images[mask].to(device)
             labels = labels[mask].to(device)
 
-            # TTA: 5 farklı görünüm
-            logits_sum = model(images).softmax(dim=1)
-            logits_sum += model(torch.flip(images, dims=[3])).softmax(dim=1)  # yatay flip
-            logits_sum += model(torch.flip(images, dims=[2])).softmax(dim=1)  # dikey flip
+            # TTA: 5 farkli gorunum (224x224 kare -> rot90 gecerli)
+            views = [
+                images,  # orijinal
+                torch.flip(images, dims=[3]),  # yatay flip
+                torch.flip(images, dims=[2]),  # dikey flip
+                torch.flip(images, dims=[2, 3]),  # 180 derece
+                torch.rot90(images, k=1, dims=[2, 3]),  # 90 derece
+            ]
+            logits_sum = sum(model(v).softmax(dim=1) for v in views)
 
             preds = logits_sum.argmax(dim=1)
             all_preds.extend(preds.cpu().numpy())
