@@ -3,7 +3,7 @@
 # ============================================================
 FROM python:3.12-slim AS builder
 
-ENV POETRY_VERSION=2.5.1 \
+ENV POETRY_VERSION=2.1.4 \
     POETRY_HOME="/opt/poetry" \
     POETRY_VIRTUALENVS_IN_PROJECT=false \
     POETRY_NO_INTERACTION=1
@@ -16,16 +16,19 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Poetry kur
+# 1) Poetry kur
 RUN curl -sSL https://install.python-poetry.org | python3 -
+
+# 2) Export plugin ekle (Poetry 2.x icin zorunlu)
+RUN poetry self add poetry-plugin-export
 
 WORKDIR /build
 
-# Sadece pyproject + lock kopyala (cache icin)
+# 3) Sadece pyproject + lock kopyala (cache icin)
 COPY pyproject.toml poetry.lock ./
 
-# requirements.txt'e export et (dev haric)
-RUN poetry export -f requirements.txt --without-hashes --without dev -o requirements.txt
+# 4) requirements.txt'e export et (dev haric)
+RUN poetry export -f requirements.txt --without-hashes --only main -o requirements.txt
 
 # ============================================================
 # STAGE 2: Production

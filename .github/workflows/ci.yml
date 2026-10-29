@@ -25,7 +25,7 @@ jobs:
       - name: Install Poetry
         uses: snok/install-poetry@v1
         with:
-          version: 2.5.1
+          version: 2.1.4
           virtualenvs-create: true
           virtualenvs-in-project: true
 
@@ -37,20 +37,16 @@ jobs:
           key: venv-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('**/poetry.lock') }}
 
       - name: Install dependencies
-        if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
-        run: poetry install --no-interaction --no-root --without dev
+        run: poetry install --no-interaction
 
-      - name: Install dev dependencies
-        run: poetry install --no-interaction --with dev
+      - name: Run ruff lint
+        run: poetry run ruff check src/ tests/
 
-      - name: Run black
-        run: poetry run black --check src/
+      - name: Run ruff format check
+        run: poetry run ruff format --check src/ tests/
 
-      - name: Run isort
-        run: poetry run isort --check-only src/
-
-      - name: Run flake8
-        run: poetry run flake8 src/
+      - name: Run mypy
+        run: poetry run mypy src/
 
       - name: Run pytest
         run: poetry run pytest tests/ -v

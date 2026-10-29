@@ -3,7 +3,7 @@ services:
   # MLOPS STACK - PDF sayfa 5
   # ============================================================
   mlflow:
-    image: ghcr.io/mlflow/mlflow:v2.16.2
+    image: ghcr.io/mlflow/mlflow:v2.20.0
     container_name: chefai-mlflow
     ports:
       - "5000:5000"
@@ -11,20 +11,24 @@ services:
       - MLFLOW_S3_ENDPOINT_URL=http://minio:9000
       - AWS_ACCESS_KEY_ID=minioadmin
       - AWS_SECRET_ACCESS_KEY=minioadmin
-    command: >
-      mlflow server
-      --backend-store-uri postgresql://mlflow:mlflow@postgres:5432/mlflow
-      --default-artifact-root s3://mlflow/
-      --host 0.0.0.0
-      --port 5000
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        pip install --no-cache-dir psycopg2-binary boto3 &&
+        exec mlflow server \
+          --backend-store-uri postgresql://mlflow:mlflow@postgres:5432/mlflow \
+          --default-artifact-root s3://mlflow/ \
+          --host 0.0.0.0 \
+          --port 5000
     depends_on:
       - postgres
       - minio
     restart: unless-stopped
 
   minio:
-    image: bitnamilegacy/minio:latest  # veya pgsty/minio:latest
+    image: cgr.dev/chainguard/minio:latest
     container_name: chefai-minio
+    user: "0:0"
     ports:
       - "9000:9000"
       - "9001:9001"
@@ -50,9 +54,10 @@ services:
     restart: unless-stopped
 
   # ============================================================
-  # API + MONITORING
+  # API + MONITORING (profil ile ayrildi; setup'ta kalkmaz)
   # ============================================================
   chefai-api:
+    profiles: ["app"]
     build:
       context: ..
       dockerfile: docker/Dockerfile
@@ -80,6 +85,7 @@ services:
       start_period: 40s
 
   prometheus:
+    profiles: ["monitor"]
     image: prom/prometheus:latest
     container_name: chefai-prometheus
     ports:
@@ -93,6 +99,7 @@ services:
     restart: unless-stopped
 
   grafana:
+    profiles: ["monitor"]
     image: grafana/grafana:latest
     container_name: chefai-grafana
     ports:

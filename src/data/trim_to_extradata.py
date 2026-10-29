@@ -22,7 +22,7 @@ EXTRA_DIR = DATA_DIR / "extradata"
 # -------------------------------------------------------------------
 # SETTINGS / AYARLAR
 # -------------------------------------------------------------------
-TARGET_COUNT = 250
+TARGET_COUNT = 200
 SEED = 42
 IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".bmp", ".gif"}
 

@@ -1,16 +1,27 @@
 """
 ChefAI - Duplicate (ayni) gorselleri siler.
 Hash bazli karsilastirma yapar.
+Sonunda her sinifi yeniden numaralandirir (000001, 000002, ...).
 
 Kullanim:
-    poetry run python src/data/cleaner.py
+    poetry run python -m src.data.remove_duplicates
+    veya
+    poetry run python src/data/remove_duplicates.py
 """
 
 import hashlib
+import sys
 import warnings
 from pathlib import Path
 
 from PIL import Image
+
+# Proje kokunu sys.path'e ekle (src.data.utils importu icin)
+_ROOT = Path(__file__).resolve().parent.parent.parent
+if str(_ROOT) not in sys.path:
+    sys.path.insert(0, str(_ROOT))
+
+from src.data.utils import renumber_class  # noqa: E402
 
 warnings.filterwarnings("ignore")
 
@@ -109,8 +120,17 @@ def main() -> None:
     print()
     print(f"Silinen duplicate: {totals['dup']}")
     print(f"Kalan gorsel     : {totals['after']}")
+
+    # Yeniden numaralandir (bosluklari kapat)
     print()
-    print("Sonraki adim: poetry run python src/data/trim_to_extradata.py")
+    print("Yeniden numaralandiriliyor...")
+    for class_dir in classes:
+        if class_dir.exists():
+            renumber_class(class_dir)
+    print("Numaralandirma tamam.")
+
+    print()
+    print("Sonraki adim: poetry run python -m src.data.trim_to_extradata")
 
 
 if __name__ == "__main__":

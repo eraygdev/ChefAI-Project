@@ -45,6 +45,7 @@ dependencies = [
     "pandas>=2.2",
     "matplotlib>=3.9",
     "seaborn>=0.13",
+    "opencv-python-headless<4.11",
 ]
 
 [tool.poetry]

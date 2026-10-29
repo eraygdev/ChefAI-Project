@@ -92,3 +92,17 @@ project_export.txt
 
 # Kisisel kontrol scripti
 check_project.sh
+export.py
+Makefile
+
+# Suspicious data
+data/suspicious/
+data/reports/
+
+# Buyuk veri arsivleri
+data/*.zip
+data/*.tar.gz
+data/*.7z
+
+# PDF'ler (ders materyali)
+docs/*.pdf

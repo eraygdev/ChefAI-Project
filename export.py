@@ -2,16 +2,28 @@
 ChefAI Projesi - Kaynak Kod Export Scripti
 
 Projedeki tum metin tabanli kaynak dosyalarini tek bir .txt ciktisina doner.
+
+Dahil edilenler (ornek):
+  - src/ altindaki tum .py dosyalari
+  - docker/ (Dockerfile, docker-compose.yml)
+  - .github/workflows/*.yml  (CI/CD)
+  - monitoring/prometheus.yml, monitoring/drift_check.py
+  - tests/ (test_*.py)
+  - pyproject.toml, README.md, Makefile, LICENSE
+  - .pre-commit-config.yaml, .env.example, .dockerignore, .gitignore
+  - data/.gitkeep, models/.gitkeep  (bos isaret dosyalari)
+
 Atlananlar:
   - Binary dosyalar (gorseller, modeller, .pt, .pth, .onnx, .pkl)
   - Veri klasorleri (data/raw, data/processed, data/brokendata, data/extradata)
   - MLflow ciktilari (mlruns/, mlartifacts/)
+  - Monitoring ciktilari (monitoring/data/, monitoring/reports/)
   - Sanal ortamlar (venv/, .venv/, env/)
-  - Cache klasorleri (__pycache__, .pytest_cache, .mypy_cache)
+  - Cache klasorleri (__pycache__, .pytest_cache, .mypy_cache, .ruff_cache)
   - Git klasoru (.git/)
-  - Not defteri ciktilari (*.ipynb_checkpoints)
-  - Lock dosyalari (poetry.lock, uv.lock)
-  - Arff, csv, parquet, json gibi veri dosyalari (istege bagli)
+  - Not defteri ciktilari (*.ipynb_checkpoints, notebooks/)
+  - Lock dosyalari (poetry.lock, uv.lock, Pipfile.lock)
+  - Veri dosyalari (csv, parquet, npy, npz, arff, ...)
 """
 
 from __future__ import annotations
@@ -51,12 +63,14 @@ INCLUDE_FILENAMES: set[str] = {
     ".pre-commit-config.yaml",
     ".env.example",
     "pyproject.toml",
+    ".gitkeep",
+    ".keep",
 }
 
 # Atlanacak klasor isimleri (her seviyede)
+# Not: ".github" ARTIK BURADA DEGIL -> CI/CD dosyalari export'a girer.
 EXCLUDE_DIRS: set[str] = {
     ".git",
-    ".github",  # istersen kaldir
     "__pycache__",
     ".pytest_cache",
     ".mypy_cache",
@@ -72,21 +86,29 @@ EXCLUDE_DIRS: set[str] = {
     "data/processed",
     "data/brokendata",
     "data/extradata",
+    "data/reports",
+    "data/suspicious",
+    "monitoring/data",
+    "monitoring/reports",
     ".ipynb_checkpoints",
+    "notebooks",
     "htmlcov",
     "dist",
     "build",
-    "*.egg-info",
+    "reports",
+    "suspicious",
 }
 
 # Atlanacak dosya uzantilari
 EXCLUDE_EXTENSIONS: set[str] = {
+    # Binary / kod degil
     ".pyc",
     ".pyo",
     ".pyd",
     ".so",
     ".dll",
     ".dylib",
+    # Gorseller
     ".jpg",
     ".jpeg",
     ".png",
@@ -96,6 +118,7 @@ EXCLUDE_EXTENSIONS: set[str] = {
     ".tiff",
     ".svg",
     ".ico",
+    # Model agirliklari
     ".pt",
     ".pth",
     ".onnx",
@@ -105,11 +128,13 @@ EXCLUDE_EXTENSIONS: set[str] = {
     ".keras",
     ".tflite",
     ".pb",
+    # Kilit / log / db
     ".lock",
     ".log",
     ".db",
     ".sqlite",
     ".sqlite3",
+    # Arsiv
     ".zip",
     ".tar",
     ".gz",
@@ -117,10 +142,12 @@ EXCLUDE_EXTENSIONS: set[str] = {
     ".xz",
     ".7z",
     ".rar",
+    # Dokuman / tablo
     ".pdf",
     ".docx",
     ".xlsx",
     ".pptx",
+    # Veri
     ".csv",
     ".tsv",
     ".parquet",
@@ -129,6 +156,7 @@ EXCLUDE_EXTENSIONS: set[str] = {
     ".npy",
     ".npz",
     ".bin",
+    # Derleme
     ".exe",
     ".o",
     ".a",
@@ -144,7 +172,6 @@ EXCLUDE_FILENAMES: set[str] = {
     ".DS_Store",
     "Thumbs.db",
     "project_export.txt",
-    "export.py",  # kendini disarida birak
 }
 
 # Cok buyuk dosyalari atla (byte)
@@ -164,7 +191,7 @@ def should_exclude_dir(path: Path) -> bool:
     parts = set(path.parts)
     for ex in EXCLUDE_DIRS:
         if "/" in ex:
-            # Yol iceren kural (ornek: data/raw)
+            # Yol iceren kural (ornek: data/raw, monitoring/data)
             if str(path).endswith(ex) or f"/{ex}/" in f"/{path}/":
                 return True
         else:
@@ -196,6 +223,10 @@ def should_include_file(path: Path) -> bool:
 
     # .pre-commit-config.yaml gibi ozel durumlar
     if name.startswith(".pre-commit-config"):
+        return True
+
+    # Uzantisiz bos isaret dosyalari (ornek: data/.gitkeep)
+    if name in {".gitkeep", ".keep"}:
         return True
 
     return False
@@ -240,14 +271,6 @@ def collect_files(root: Path) -> list[Path]:
         # Klasor yolu icinde atlanacak bir sey var mi?
         if any(should_exclude_dir(p) for p in path.parents):
             continue
-
-        # Gorunmez klasorleri atla (.git zaten listede)
-        if any(
-            part.startswith(".") and part not in {".github", ".pre-commit-config.yaml"}
-            for part in path.parts
-        ):
-            # Ama .gitignore, .dockerignore gibi dosyalari elle kontrol edecegiz
-            pass
 
         # Dosya dahil edilmeli mi?
         if not should_include_file(path):
