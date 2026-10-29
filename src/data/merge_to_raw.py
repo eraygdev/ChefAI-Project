@@ -38,9 +38,9 @@ PROCESSED_DIR = DATA_DIR / "processed"
 ALL_SPLITS = ["train", "val", "test"]
 
 
-def merge_split(split: str, move: bool, dry_run: bool) -> dict:
+def merge_split(split: str, move: bool, dry_run: bool) -> dict[str, int]:
     """Bir split'i (train/val/test) raw/ altinda birlestirir."""
-    stats = {"split": split, "files": 0, "copied": 0, "moved": 0, "collisions": 0}
+    stats: dict[str, int] = {"files": 0, "copied": 0, "moved": 0, "collisions": 0}
 
     split_dir = PROCESSED_DIR / split
     if not split_dir.exists():
@@ -135,12 +135,12 @@ def main() -> None:
         RAW_DIR.mkdir(parents=True, exist_ok=True)
         print(f"Not: {RAW_DIR} olusturuldu.")
 
-    grand = {"files": 0, "copied": 0, "moved": 0, "collisions": 0}
+    grand: dict[str, int] = {"files": 0, "copied": 0, "moved": 0, "collisions": 0}
 
     for split in splits:
-        s = merge_split(split, args.move, args.dry_run)
+        s = merge_split(split, not args.copy, args.dry_run)
         for k in grand:
-            grand[k] += s[k]
+            grand[k] += int(s[k])
 
         action = "tasinacak" if args.move else "kopyalanacak"
         print(f"  [{split:5s}] {s['files']:>5} dosya {action} (cakisma: {s['collisions']})")

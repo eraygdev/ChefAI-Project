@@ -57,7 +57,7 @@ def main() -> None:
     all_preds = np.array(all_preds)
     all_labels = np.array(all_labels)
 
-    acc = (all_preds == all_labels).mean()
+    acc = float(np.mean(all_preds == all_labels))
     print(f"\nTest accuracy: {acc:.4f}")
 
     print("\nSinif bazli rapor:")

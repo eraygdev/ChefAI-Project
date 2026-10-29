@@ -54,7 +54,7 @@ CLASSES: list[str] = [
 
 NUM_CLASSES = len(CLASSES)
 CLASS_TO_IDX: dict[str, int] = {name: i for i, name in enumerate(CLASSES)}
-IDX_TO_CLASS: dict[int, str] = {i: name for i, name in enumerate(CLASSES)}
+IDX_TO_CLASS: dict[int, str] = dict(enumerate(CLASSES))
 
 
 @dataclass
