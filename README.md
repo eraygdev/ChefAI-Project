@@ -350,7 +350,7 @@ Her `git push` ve `pull_request`'te otomatik calisir.
 
 ## Gelistirici
 
-Eray - MLOps ve AI Systems dersi
+Eray, Burak - MLOps ve AI Systems dersi
 
 ## Lisans
 
