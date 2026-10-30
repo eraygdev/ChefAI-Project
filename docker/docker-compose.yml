@@ -65,24 +65,14 @@ services:
     container_name: chefai-api
     ports:
       - "8000:8000"
-    volumes:
-      - ../models:/app/models:ro
-      - ../monitoring/data:/app/monitoring/data
-    environment:
-      - PYTHONUNBUFFERED=1
-      - MLFLOW_TRACKING_URI=http://mlflow:5000
-      - MLFLOW_S3_ENDPOINT_URL=http://minio:9000
-      - AWS_ACCESS_KEY_ID=minioadmin
-      - AWS_SECRET_ACCESS_KEY=minioadmin
-    depends_on:
-      - mlflow
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    # ... geri kalan aynı
 
   prometheus:
     profiles: ["monitor"]

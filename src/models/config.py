@@ -19,16 +19,28 @@ RAW_DIR = DATA_DIR / "raw"
 
 
 def _discover_classes() -> list[str]:
-    """data/raw/ altindaki sinif klasorlerini alfabetik dondur."""
+    """data/raw/ altindaki sinif klasorlerini alfabetik dondur.
+
+    Docker'da data/raw/ mount edilmis olmali (docker-compose.yml volumes).
+    Yoksa sessizce bos donmek yerine net hata firlat.
+    """
     if not RAW_DIR.exists():
-        return []
-    return sorted(
+        raise FileNotFoundError(
+            f"SINIF KLASORU BULUNAMADI: {RAW_DIR}\n"
+            f"  Docker'da calisiyorsan: docker-compose.yml'de "
+            f"'../data/raw:/app/data/raw:ro' mount'u var mi kontrol et.\n"
+            f"  Lokal'de calisiyorsan: data/raw/ klasorunun var oldugundan emin ol."
+        )
+    classes = sorted(
         p.name
         for p in RAW_DIR.iterdir()
         if p.is_dir()
-        and not p.name.startswith((".", "_"))  # .gitkeep, _tmp vb atla
+        and not p.name.startswith((".", "_"))
         and p.name not in {"removed", "removed_v1", "suspicious", "reports"}
     )
+    if not classes:
+        raise ValueError(f"{RAW_DIR} bos, sinif klasoru yok")
+    return classes
 
 
 CLASSES: list[str] = _discover_classes()

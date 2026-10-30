@@ -37,7 +37,8 @@ FROM python:3.12-slim AS production
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    PIP_NO_CACHE_DIR=1
+    PIP_NO_CACHE_DIR=1 \
+    PYTHONPATH=/app
 
 WORKDIR /app
 
@@ -64,9 +65,13 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')" || exit 1
 
-# Gunicorn + Uvicorn workers (PDF sayfa 18)
+# Gunicorn + Uvicorn workers
+# --chdir /app      : gunicorn calisma dizinini /app yap (sys.path[0] = /app olur)
+# --pythonpath /app : ekstra guvence, sys.path'e /app ekle
 CMD ["gunicorn", \
     "src.api.main:app", \
+    "--chdir", "/app", \
+    "--pythonpath", "/app", \
     "--workers", "4", \
     "--worker-class", "uvicorn.workers.UvicornWorker", \
     "--bind", "0.0.0.0:8000"]
