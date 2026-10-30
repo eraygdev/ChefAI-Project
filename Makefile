@@ -171,8 +171,8 @@ test-cov:  ## pytest + coverage
 # ------------------------------------------------------------
 # DOCKER
 # ------------------------------------------------------------
-up:  ## Docker stack baslat + MLflow UI tarayicida ac
-	$(COMPOSE) up -d
+docker-up:  ## Tum stack baslat (API + MLflow + MinIO + Postgres + Monitoring)
+	$(COMPOSE) --profile app --profile monitor up -d
 	@sleep 3
 	@$(MAKE) --no-print-directory mlflow-ui
 	@echo "Servisler hazir:"
