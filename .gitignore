@@ -106,3 +106,4 @@ data/*.7z
 
 # PDF'ler (ders materyali)
 docs/*.pdf
+data/removed_v1/
