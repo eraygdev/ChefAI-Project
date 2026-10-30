@@ -15,17 +15,20 @@ VALID_EXT = {".jpg", ".jpeg", ".png", ".webp", ".bmp"}
 
 
 def get_train_transforms(image_size: int = 224) -> transforms.Compose:
+    # 200/sinif icin daha yumusak augmentation
     return transforms.Compose(
         [
-            transforms.RandomResizedCrop(image_size, scale=(0.7, 1.0)),
+            # 256x185 crop'lu siniflar var -> scale (0.85,1.0) hepsini kapsar
+            # Ama daha agresif crop ile model detaydan çok şekle odaklanır
+            transforms.RandomResizedCrop(image_size, scale=(0.70, 1.0)),  # 0.7→0.85
             transforms.RandomHorizontalFlip(p=0.5),
-            transforms.RandomRotation(15),
-            transforms.RandomAffine(degrees=0, translate=(0.1, 0.1), shear=10),
-            transforms.ColorJitter(brightness=0.3, contrast=0.3, saturation=0.3, hue=0.1),
-            transforms.RandomGrayscale(p=0.05),
+            transforms.RandomRotation(10),  # 15→10
+            # RandomAffine KALDIRILDI (rotation zaten var, shear zararli)
+            transforms.ColorJitter(brightness=0.3, contrast=0.3, saturation=0.3),
+            # RandomGrayscale KALDIRILDI (yemek rengi kritik)
             transforms.ToTensor(),
             transforms.Normalize(mean=IMAGENET_MEAN, std=IMAGENET_STD),
-            transforms.RandomErasing(p=0.3, scale=(0.02, 0.25)),
+            transforms.RandomErasing(p=0.15, scale=(0.02, 0.15)),  # 0.3→0.15
         ]
     )
 

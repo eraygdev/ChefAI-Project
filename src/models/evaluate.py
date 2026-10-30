@@ -50,15 +50,26 @@ def main() -> None:
             images = images[mask].to(device)
             labels = labels[mask].to(device)
 
-            # TTA: 5 farkli gorunum (224x224 kare -> rot90 gecerli)
+            # TTA: SADECE egitim dagilimina uygun gorunumler.
+            # Training aug: hflip(p=0.5), rotation(±15), crop(0.7-1.0)
+            # vflip / 180 / rot90 EGITIMDE YOK -> OOD -> softmax bozulur, KULLANMA.
+            h, w = images.shape[-2:]
+            crop = int(h * 0.88)
+            top = (h - crop) // 2
+            left = (w - crop) // 2
+            center_crop = images[..., top : top + crop, left : left + crop]
+            center_crop = torch.nn.functional.interpolate(
+                center_crop, size=(h, w), mode="bilinear", align_corners=False
+            )
             views = [
                 images,  # orijinal
-                torch.flip(images, dims=[3]),  # yatay flip
-                torch.flip(images, dims=[2]),  # dikey flip
-                torch.flip(images, dims=[2, 3]),  # 180 derece
-                torch.rot90(images, k=1, dims=[2, 3]),  # 90 derece
+                torch.flip(images, dims=[3]),  # yatay flip (egitimde var)
+                center_crop,  # hafif crop (egitimde var)
+                torch.flip(center_crop, dims=[3]),  # crop + hflip
             ]
-            logits_sum = sum(model(v).softmax(dim=1) for v in views)
+            # Guvenli ortalama: sum() yerine torch.stack (her zaman tensor doner)
+            probs_list = [model(v).softmax(dim=1) for v in views]
+            logits_sum = torch.stack(probs_list, dim=0).mean(dim=0)
 
             preds = logits_sum.argmax(dim=1)
             all_preds.extend(preds.cpu().numpy())

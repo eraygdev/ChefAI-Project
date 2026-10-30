@@ -24,13 +24,14 @@ AMP mixed precision, num_workers 2.
 
 | Kategori | Siniflar | Adet |
 |----------|----------|------|
-| Corbalar | mercimek, ezogelin, domates, tavuk_suyu | 4 |
-| Et/Tavuk | izgara_tavuk, kofte, tavuk_sote, etli_nohut, karniyarik, manti | 6 |
-| Sebze | zeytinyagli_fasulye, imam_bayildi, menemen, kisir, firin_sebze | 5 |
-| Hamur | pizza, pide, borek, pogaca, gozleme | 5 |
+| Corbalar | mercimek, domates, tavuk_suyu | 3 |
+| Et/Tavuk | izgara_tavuk, kofte, etli_nohut, karniyarik, manti, kuru_fasulye | 6 |
+| Sebze/Dolma | zeytinyagli_fasulye, kisir, firin_sebze, yaprak_sarma | 4 |
+| Hamur | pizza, borek, gozleme, lahmacun, simit | 5 |
 | Pilav/Makarna | pirinc_pilavi, bulgur_pilavi | 2 |
 | Kahvaltilik | omlet, pankek, avokado_tost | 3 |
-| Tatlilar | kek, kurabiye, sutlac | 3 |
+| Tatlilar | kek, kurabiye, sutlac, baklava | 4 |
+| Balik | hamsi_tava | 1 |
 | Ekstra | patates_kizartmasi, midye | 2 |
 
 Bolme orani: %80 train, %10 val, %10 test (her sinif kendi icinde stratified).
@@ -174,13 +175,18 @@ Tum komutlar proje kokunden (`~/Masaustu/MLOps_Project`) calisir.
     # Yeniden numaralandir (000001, ...)
     poetry run python -m src.data.renumber_images
 
-### Geri alma (yanlis karar verildiyse)
+### Geri alma / temizlik
 
     # brokendata'dan raw'a geri tasi
     poetry run python src/data/restore_broken.py
 
-    # processed'i raw'a birlestir (test/val/train -> raw)
+    # processed'i sil (raw'dan yeniden split icin)
     poetry run python -m src.data.merge_to_raw
+    # veya
+    make data-clear
+
+    # (Nadir) processed'i raw'a birlestir - DUPLICATE RISKI
+    poetry run python -m src.data.merge_to_raw --merge --move
 
 ## Model Egitimi
 

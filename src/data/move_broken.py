@@ -242,7 +242,10 @@ def main() -> None:
         csv_writer.writerow(["class", "filename", "status", "width", "height", "reason"])
 
     classes = sorted([p for p in RAW_DIR.iterdir() if p.is_dir()])
-    print(f"Sinif sayisi: {len(classes)}")
+    # 256x185 crop'lu siniflar: MIN_SIZE 200'u gecmez, oldugu gibi birak
+    SKIP_LOW_RES = {"kuru_fasulye", "yaprak_sarma", "simit", "lahmacun"}
+    classes = [c for c in classes if c.name not in SKIP_LOW_RES]
+    print(f"Sinif sayisi: {len(classes)} (atlana: {sorted(SKIP_LOW_RES)})")
     print()
 
     grand_total = {"total": 0, "ok": 0, "small": 0, "broken": 0, "missing": 0}

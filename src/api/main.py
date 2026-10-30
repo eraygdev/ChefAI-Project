@@ -25,9 +25,7 @@ ALLERGENS: dict[str, list[str]] = {
     "gluten": [
         "manti",
         "pizza",
-        "pide",
         "borek",
-        "pogaca",
         "gozleme",
         "kisir",
         "bulgur_pilavi",
@@ -35,6 +33,9 @@ ALLERGENS: dict[str, list[str]] = {
         "kurabiye",
         "pankek",
         "avokado_tost",
+        "lahmacun",  # YENI
+        "simit",  # YENI
+        "baklava",  # YENI
     ],
     "sut": [
         "sutlac",
@@ -42,34 +43,35 @@ ALLERGENS: dict[str, list[str]] = {
         "kurabiye",
         "pankek",
         "borek",
-        "pogaca",
         "kofte",
         "omlet",
+        "baklava",  # YENI (tereyagi)
     ],
     "yumurta": [
         "omlet",
-        "menemen",
         "kek",
         "kurabiye",
         "pankek",
         "kofte",
         "manti",
         "borek",
-        "pogaca",
+        "baklava",  # YENI (bazi tariflerde)
     ],
     "et": [
         "kofte",
         "karniyarik",
         "etli_nohut",
         "manti",
-        "pide",
         "borek",
-        "pogaca",
         "gozleme",
+        "lahmacun",  # YENI (kıyma)
+        "yaprak_sarma",  # YENI (genelde etli)
     ],
-    "tavuk": ["izgara_tavuk", "tavuk_sote", "tavuk_suyu_corba"],
+    "tavuk": ["izgara_tavuk", "tavuk_suyu_corba"],
     "avokado": ["avokado_tost"],
     "nohut": ["etli_nohut"],
+    "balik": ["hamsi_tava"],  # YENI kategori
+    "findik": ["baklava"],  # YENI kategori (fistik/findik)
 }
 
 # -------------------------------------------------------------------
@@ -144,7 +146,26 @@ async def _load_image(file: UploadFile) -> Image.Image:
 def _predict(img: Image.Image) -> Prediction:
     if MODEL is None:
         raise HTTPException(503, "Model yuklu degil")
-    tensor = TRANSFORM(img).unsqueeze(0).to(DEVICE)
+
+    if not isinstance(img, Image.Image):
+        raise HTTPException(
+            400,
+            f"Beklenen PIL Image, alinan: {type(img).__name__}",
+        )
+
+    transformed = TRANSFORM(img)
+    if not isinstance(transformed, torch.Tensor):
+        raise HTTPException(
+            500,
+            f"TRANSFORM tensor dondurmedi: {type(transformed).__name__}",
+        )
+    if transformed.dim() != 3:
+        raise HTTPException(
+            500,
+            f"Beklenen (C,H,W), alinan: {tuple(transformed.shape)}",
+        )
+
+    tensor = transformed.unsqueeze(0).to(DEVICE)
     probs = MODEL(tensor).softmax(dim=1)[0]
     top5_probs, top5_idx = probs.topk(5)
     top5 = [

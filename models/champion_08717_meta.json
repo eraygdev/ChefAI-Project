@@ -1,0 +1,71 @@
+{
+  "checkpoint_file": "models/champion_08717.pt",
+  "checkpoint_size_mb": 22.87,
+  "checkpoint_sha256_16": "9b5d39807bf04d03",
+  "saved_at": "2026-10-30T11:06:35.896765",
+  "training": {
+    "run_name": "painted-swan-832",
+    "run_id": "a1fb96e8d9da4d95bfe8165636ba6dbb",
+    "mlflow_url": "http://localhost:5000/#/experiments/1/runs/a1fb96e8d9da4d95bfe8165636ba6dbb",
+    "best_epoch": 31,
+    "best_val_acc": 0.8716666666666667,
+    "num_classes": 30,
+    "total_epochs": 35,
+    "early_stopping": "not triggered",
+    "hyperparams": {
+      "model": "tf_efficientnetv2_b0.in1k",
+      "batch_size": 8,
+      "grad_accum_steps": 4,
+      "learning_rate": 0.001,
+      "weight_decay": 1e-05,
+      "freeze_epochs": 3,
+      "backbone_lr_after_unfreeze": 0.0001,
+      "head_lr_after_unfreeze": 0.001,
+      "bn_frozen": 59,
+      "mixed_precision": true,
+      "label_smoothing": 0.1,
+      "mixup": true,
+      "ema": true,
+      "scheduler": "CosineAnnealingLR T_max=35",
+      "patience": 12,
+      "seed": 42
+    },
+    "data": {
+      "train_samples": 4800,
+      "val_samples": 600,
+      "test_samples": 600,
+      "classes": 30,
+      "split_ratio": "80/10/10"
+    }
+  },
+  "evaluation": {
+    "val_acc": 0.8717,
+    "test_acc": 0.865,
+    "macro_f1": 0.86,
+    "weighted_f1": 0.86,
+    "tta_views": 4,
+    "confusion_matrix": "models/confusion_matrix.png"
+  },
+  "weak_classes": {
+    "tavuk_sote": {
+      "recall": 0.6,
+      "confused_with": "izgara_tavuk"
+    },
+    "imam_bayildi": {
+      "recall": 0.6,
+      "confused_with": "karniyarik"
+    },
+    "pide": {
+      "recall": 0.65,
+      "confused_with": "pizza"
+    },
+    "mercimek_corbasi": {
+      "recall": 0.75,
+      "confused_with": "ezogelin_corbasi"
+    }
+  },
+  "known_issues": [
+    "MLflow artifact upload failed (S3 credentials) - metrics saved, model file local only",
+    "MLflow log_model bug: final epoch model logged, not best epoch"
+  ]
+}

@@ -46,6 +46,7 @@ dependencies = [
     "matplotlib>=3.9",
     "seaborn>=0.13",
     "opencv-python-headless<4.11",
+    "boto3 (>=1.43.121,<2.0.0)",
 ]
 
 [tool.poetry]

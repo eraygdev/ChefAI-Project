@@ -33,23 +33,51 @@ def set_seed(seed: int) -> None:
         torch.cuda.manual_seed_all(seed)
 
 
-def mixup_batch(images, labels, alpha=0.2):
-    """MixUp: iki goruntuyu karistirir. alpha<=0 ise devre disi."""
-    if alpha <= 0:
+def mix_batch(images, labels, use_mixup=True, use_cutmix=True):
+    """
+    MixUp veya CutMix rastgele. Ikisi birden aciksa 50/50.
+    CutMix label noise'a daha dayanikli.
+    """
+    if not use_mixup and not use_cutmix:
         return images, labels, None
-    lam = float(np.random.beta(alpha, alpha))
-    batch_size = images.size(0)
-    index = torch.randperm(batch_size, device=images.device)
-    mixed = lam * images + (1 - lam) * images[index]
-    return mixed, labels, (labels[index], lam)
+
+    use_cut = use_cutmix and (not use_mixup or np.random.rand() < 0.5)
+
+    if use_cut:
+        # CutMix: iki goruntuden dikdortgen kes, yer degistir
+        lam = float(np.random.beta(1.0, 1.0))
+        B, C, H, W = images.shape
+        cut_rat = np.sqrt(1.0 - lam)
+        cut_w = int(W * cut_rat)
+        cut_h = int(H * cut_rat)
+        cx = np.random.randint(W)
+        cy = np.random.randint(H)
+        x1 = int(np.clip(cx - cut_w // 2, 0, W))
+        x2 = int(np.clip(cx + cut_w // 2, 0, W))
+        y1 = int(np.clip(cy - cut_h // 2, 0, H))
+        y2 = int(np.clip(cy + cut_h // 2, 0, H))
+        index = torch.randperm(B, device=images.device)
+        mixed = images.clone()
+        mixed[:, :, y1:y2, x1:x2] = images[index, :, y1:y2, x1:x2]
+        # Gercek lam (kutu boyutundan)
+        lam = 1 - ((x2 - x1) * (y2 - y1) / (W * H))
+        return mixed, labels, (labels[index], lam)
+    else:
+        # MixUp
+        lam = float(np.random.beta(0.2, 0.2))
+        B = images.size(0)
+        index = torch.randperm(B, device=images.device)
+        mixed = lam * images + (1 - lam) * images[index]
+        return mixed, labels, (labels[index], lam)
 
 
 def update_ema(ema_model, model, global_step, decay_max=0.999):
     """
     EMA with warmup: decay baslangicta dusuk, zamanla decay_max'a yaklasir.
-    Formul (MoCo/BYOL standardi): decay = min(decay_max, (1 + step) / (10 + step))
+    Not: Formul (1+step)/(10+step) cok agresif baslar (step 0 -> 0.1).
+    200/sinif + kisa egitim icin daha yumusak: 0.9 -> 0.999 arasi.
     """
-    decay = min(decay_max, (1.0 + global_step) / (10.0 + global_step))
+    decay = min(decay_max, 0.9 + 0.099 * min(1.0, global_step / 500.0))
     with torch.no_grad():
         for ema_p, p in zip(ema_model.parameters(), model.parameters(), strict=False):
             ema_p.data.mul_(decay).add_(p.data, alpha=1 - decay)
@@ -75,9 +103,25 @@ def train_one_epoch(
 ):
     model.train()
     # Freeze sirasinda backbone'u eval() modunda tut -> BN running stats korunur
+    # Unfreeze sonrasi da SADECE BN'leri eval'de tut -> ImageNet running stats korunur
     if backbone_frozen:
-        for name, module in model.named_modules():
-            if name and not name.startswith("classifier"):
+        try:
+            head_module = model.get_classifier()
+            head_module_ids = {id(m) for m in head_module.modules()}
+        except AttributeError:
+            head_module_ids = {
+                id(m)
+                for n, m in model.named_modules()
+                if n.startswith(("classifier", "head", "fc"))
+            }
+        for _, module in model.named_modules():
+            if id(module) not in head_module_ids:
+                module.eval()
+    else:
+        # Unfreeze sonrasi: BN running stats ImageNet'ten korunsun
+        # (conv agirliklari 1e-4 LR ile fine-tune olur, BN istatistikleri donar)
+        for module in model.modules():
+            if isinstance(module, torch.nn.BatchNorm1d | torch.nn.BatchNorm2d):
                 module.eval()
 
     total_loss = 0.0
@@ -94,7 +138,7 @@ def train_one_epoch(
         labels = labels[mask].to(device, non_blocking=True)
 
         if use_mixup:
-            mixed_images, _, mix_info = mixup_batch(images, labels, alpha=0.2)
+            mixed_images, _, mix_info = mix_batch(images, labels, use_mixup=True, use_cutmix=True)
         else:
             mixed_images, mix_info = images, None
 
@@ -189,8 +233,8 @@ def main() -> None:
     parser.add_argument(
         "--freeze-epochs",
         type=int,
-        default=1,
-        help="Ilk N epoch backbone dondur (0=kapali, default=1)",
+        default=3,
+        help="Ilk N epoch backbone dondur (0=kapali, default=3=ACIK)",
     )
     args = parser.parse_args()
 
@@ -272,19 +316,30 @@ def main() -> None:
     # ------------------------------------------------------------------
     FREEZE_EPOCHS = args.freeze_epochs
     if FREEZE_EPOCHS > 0:
+        # timm-agnostik: model.get_classifier() ne dönerse o head
+        try:
+            head = model.get_classifier()
+            head_param_ids = {id(p) for p in head.parameters()}
+        except AttributeError:
+            # Fallback: bilinen prefix'ler
+            prefixes = ("classifier", "head", "fc")
+            head_param_ids = {id(p) for n, p in model.named_parameters() if n.startswith(prefixes)}
+
         frozen, trainable = 0, 0
-        for name, p in model.named_parameters():
-            if not name.startswith("classifier"):
+        for _, p in model.named_parameters():
+            if id(p) in head_param_ids:
+                p.requires_grad = True
+                trainable += 1
+            else:
                 p.requires_grad = False
                 frozen += 1
-            else:
-                trainable += 1
+
         print(
             f"Backbone donduruldu: {frozen} param, "
             f"{trainable} trainable head ({FREEZE_EPOCHS} epoch)"
         )
         if trainable == 0:
-            print("UYARI: 'classifier' prefix'i eslesmedi! Son paramlar:")
+            print("UYARI: classifier bulunamadi! Son paramlar:")
             for n, _ in list(model.named_parameters())[-5:]:
                 print(f"  {n}")
 
@@ -298,7 +353,7 @@ def main() -> None:
         print(f"LR schedule: Cosine (T_max={cfg.epochs}), warmup YOK (freeze aktif)")
     else:
         warmup_epochs = max(1, min(2, cfg.epochs // 10))
-        warmup_sched = LinearLR(optimizer, start_factor=0.1, total_iters=warmup_epochs)
+        warmup_sched = LinearLR(optimizer, start_factor=0.5, total_iters=warmup_epochs)
         cosine_sched = CosineAnnealingLR(optimizer, T_max=max(cfg.epochs - warmup_epochs, 1))
         scheduler = SequentialLR(
             optimizer,
@@ -331,18 +386,53 @@ def main() -> None:
         )
 
     best_val_acc = 0.0
+    best_train_acc = 0.0
     patience_counter = 0
     global_step = 0
     cfg.output_dir.mkdir(parents=True, exist_ok=True)
     best_path = cfg.output_dir / cfg.checkpoint_name
+
+    # SWA: son 10 epoch'un agirliklarini ortala
+    from torch.optim.swa_utils import AveragedModel, update_bn
+
+    SWA_START = cfg.epochs - 10
+    swa_model = None
 
     for epoch in range(cfg.epochs):
         # Freeze bitince backbone'u ac
         if FREEZE_EPOCHS > 0 and epoch == FREEZE_EPOCHS:
             for p in model.parameters():
                 p.requires_grad = True
-            model.train()  # BN stats tekrar guncellensin
-            print(f"Backbone acildi (epoch {epoch + 1}'den itibaren tam fine-tune)")
+            try:
+                head_params = list(model.get_classifier().parameters())
+                head_ids = {id(p) for p in head_params}
+            except AttributeError:
+                head_params = [p for n, p in model.named_parameters() if n.startswith("classifier")]
+                head_ids = {id(p) for p in head_params}
+            backbone_params = [p for p in model.parameters() if id(p) not in head_ids]
+
+            optimizer = AdamW(
+                [
+                    {"params": backbone_params, "lr": cfg.learning_rate * 0.1},
+                    {"params": head_params, "lr": cfg.learning_rate},
+                ],
+                weight_decay=cfg.weight_decay,
+            )
+            remaining = max(cfg.epochs - epoch, 1)
+            scheduler = CosineAnnealingLR(optimizer, T_max=remaining)
+
+            # BN DONDUR: running stats ImageNet'ten korunsun
+            bn_frozen = 0
+            for module in model.modules():
+                if isinstance(module, torch.nn.BatchNorm1d | torch.nn.BatchNorm2d):
+                    module.eval()
+                    module.momentum = 0.0
+                    bn_frozen += 1
+            print(
+                f"Backbone acildi (epoch {epoch + 1}'den itibaren): "
+                f"backbone LR={cfg.learning_rate*0.1:.1e}, head LR={cfg.learning_rate:.1e}, "
+                f"BN frozen={bn_frozen}"
+            )
 
         t0 = time.time()
         train_loss, train_acc, global_step = train_one_epoch(
@@ -385,19 +475,38 @@ def main() -> None:
                 step=epoch,
             )
 
-        if val_acc > best_val_acc:
-            best_val_acc = val_acc
-            patience_counter = 0
+        # --- 1) SWA guncellemesi (improvement'tan BAGIMSIZ) ---
+        if epoch == SWA_START:
+            swa_model = AveragedModel(val_model)
+            print(f"SWA basladi (epoch {epoch + 1})")
+        elif epoch > SWA_START and swa_model is not None:
+            swa_model.update_parameters(val_model)
+
+        # --- 2) Best model kaydetme ---
+        is_improvement = val_acc > best_val_acc
+        is_tie_break = (val_acc == best_val_acc) and (train_acc > best_train_acc)
+
+        if is_improvement or is_tie_break:
+            if is_improvement:
+                best_val_acc = val_acc
+                best_train_acc = train_acc
+                patience_counter = 0
+                print(f"  Yeni en iyi model (val): {best_path}")
+            elif is_tie_break:
+                best_train_acc = train_acc
+                patience_counter = 0
+                print(f"  Tie-break: esit val, daha yuksek train ({train_acc:.4f})")
+
             torch.save(
                 {
                     "epoch": epoch,
                     "model_state": val_model.state_dict(),
                     "val_acc": val_acc,
+                    "train_acc": train_acc,
                     "num_classes": model_cfg.num_classes,
                 },
                 best_path,
             )
-            print(f"  Yeni en iyi model: {best_path}")
         else:
             patience_counter += 1
             if patience_counter >= cfg.early_stopping_patience:
@@ -406,18 +515,44 @@ def main() -> None:
 
     print(f"\nEn iyi val_acc: {best_val_acc:.4f}")
 
+    # SWA final degerlendirmesi
+    if swa_model is not None:
+        print("SWA BN istatistikleri guncelleniyor...")
+        update_bn(train_loader, swa_model, device=device)
+        _, swa_val_acc = evaluate(swa_model, val_loader, criterion, device)
+        print(f"SWA val_acc: {swa_val_acc:.4f}")
+        if swa_val_acc > best_val_acc:
+            best_val_acc = swa_val_acc
+            torch.save(
+                {
+                    "epoch": cfg.epochs - 1,
+                    "model_state": swa_model.module.state_dict(),
+                    "val_acc": swa_val_acc,
+                    "train_acc": 0.0,
+                    "num_classes": model_cfg.num_classes,
+                },
+                best_path,
+            )
+            print(f"SWA model kaydedildi (yeni en iyi): {best_path}")
+
     if not args.no_mlflow:
         try:
             log_model = ema_model if (use_ema and ema_model is not None) else model
             log_model.eval()
             mlflow.log_metric("best_val_acc", best_val_acc)
-            mlflow.log_artifact(str(best_path), artifact_path="checkpoint")
-            log_model_cpu = log_model.cpu()
-            mlflow.pytorch.log_model(
-                log_model_cpu,
-                "model",
-                registered_model_name=f"chefai-{model_cfg.model_name}",
-            )
+            # Artifact/model logging opsiyonel — S3 erisilemezse training crash etmesin
+            try:
+                mlflow.log_artifact(str(best_path), artifact_path="checkpoint")
+                log_model_cpu = log_model.cpu()
+                mlflow.pytorch.log_model(
+                    log_model_cpu,
+                    "model",
+                    registered_model_name=f"chefai-{model_cfg.model_name}",
+                )
+                print("MLflow artifact + model kaydedildi")
+            except Exception as e:
+                print(f"UYARI: MLflow artifact kaydedilemedi (model lokal'de guvende): {e}")
+                print(f"  Lokal checkpoint: {best_path}")
         finally:
             mlflow.end_run()
 

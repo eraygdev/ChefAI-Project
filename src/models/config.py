@@ -11,47 +11,27 @@ DATA_DIR = PROJECT_ROOT / "data"
 PROCESSED_DIR = DATA_DIR / "processed"
 MODELS_DIR = PROJECT_ROOT / "models"
 
-CLASSES: list[str] = [
-    # Corbalar (4)
-    "mercimek_corbasi",
-    "ezogelin_corbasi",
-    "domates_corbasi",
-    "tavuk_suyu_corba",
-    # Et/Tavuk (6)
-    "izgara_tavuk",
-    "kofte",
-    "tavuk_sote",
-    "etli_nohut",
-    "karniyarik",
-    "manti",
-    # Sebze (5)
-    "zeytinyagli_fasulye",
-    "imam_bayildi",
-    "menemen",
-    "kisir",
-    "firin_sebze",
-    # Hamur (5)
-    "pizza",
-    "pide",
-    "borek",
-    "pogaca",
-    "gozleme",
-    # Pilav/Makarna (2)
-    "pirinc_pilavi",
-    "bulgur_pilavi",
-    # Kahvaltilik (3)
-    "omlet",
-    "pankek",
-    "avokado_tost",
-    # Tatlilar (3)
-    "kek",
-    "kurabiye",
-    "sutlac",
-    # Ekstra (2)
-    "patates_kizartmasi",
-    "midye",
-]
+# -------------------------------------------------------------------
+# CLASSES — data/raw/ altindan dinamik okunur
+# Sadece gercek sinif klasorleri (gizli/temp/silinen haric)
+# -------------------------------------------------------------------
+RAW_DIR = DATA_DIR / "raw"
 
+
+def _discover_classes() -> list[str]:
+    """data/raw/ altindaki sinif klasorlerini alfabetik dondur."""
+    if not RAW_DIR.exists():
+        return []
+    return sorted(
+        p.name
+        for p in RAW_DIR.iterdir()
+        if p.is_dir()
+        and not p.name.startswith((".", "_"))  # .gitkeep, _tmp vb atla
+        and p.name not in {"removed", "removed_v1", "suspicious", "reports"}
+    )
+
+
+CLASSES: list[str] = _discover_classes()
 NUM_CLASSES = len(CLASSES)
 CLASS_TO_IDX: dict[str, int] = {name: i for i, name in enumerate(CLASSES)}
 IDX_TO_CLASS: dict[int, str] = dict(enumerate(CLASSES))
@@ -70,16 +50,16 @@ class ModelConfig:
 class TrainConfig:
     # Data
     data_dir: Path = PROCESSED_DIR
-    num_workers: int = 2
-    pin_memory: bool = True  # GPU varsa CPU->GPU transfer hizlanir (MX330'da +%5-10)
+    num_workers: int = 1  # RAM tasarrufu
+    pin_memory: bool = False  # 7.5GB RAM'de pin_mem swap'e iter, kapat
 
     # Training
-    epochs: int = 35
+    epochs: int = 50
     batch_size: int = 8
     grad_accum_steps: int = 4  # efektif batch = 32
-    learning_rate: float = 1e-4
+    learning_rate: float = 1e-3
     weight_decay: float = 1e-5
-    early_stopping_patience: int = 8
+    early_stopping_patience: int = 12
 
     # Optimizations
     mixed_precision: bool = True

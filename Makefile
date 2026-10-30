@@ -8,7 +8,7 @@ SHELL := /bin/bash
 PYTHON  := poetry run python
 COMPOSE := cd docker && docker compose
 
-EPOCHS     ?= 35
+EPOCHS     ?= 50
 BATCH_SIZE ?= 8
 OUTPUT     ?= project_export.txt
 N_TRIALS   ?= 5
@@ -62,9 +62,11 @@ help:  ## Bu yardim mesajini goster
 	@echo "    make data-remove-dups     Duplicate sil"
 	@echo "    make data-trim            Fazlaliklari tasi"
 	@echo "    make data-split           Train/val/test bol"
-	@echo "    make data-merge-move      processed -> raw TASI (processed bosalir)"
+	@echo "    make data-clear           processed'i sil (raw guvende)"
+	@echo "    make data-clear-dry       processed silme on izleme"
+	@echo "    make data-merge-move      processed -> raw TASI (DUPLICATE RISKI)"
 	@echo "    make data-merge-dry       processed -> raw on izleme"
-	@echo "    make data-renumber        Goruntuleri 000001'den baslat"
+	@echo "    make data-renumber        Tum goruntuleri (raw + processed) 000001'den baslat"
 	@echo ""
 	@echo "  MODEL"
 	@echo "    make train                Tam egitim (35 epoch)"
@@ -261,26 +263,32 @@ data-trim:  ## Fazlaliklari extradata'ya tasi
 data-split:  ## Train/val/test bol
 	$(PYTHON) -m src.data.split_dataset
 
-data-merge-move:  ## processed -> raw TASI (processed bosalir)
-	$(PYTHON) -m src.data.merge_to_raw --move
+data-clear:  ## processed'i sil (raw guvende, temiz baslangic)
+	$(PYTHON) -m src.data.clear_processed --yes
+
+data-clear-dry:  ## processed silme on izleme (hicbir sey silinmez)
+	$(PYTHON) -m src.data.clear_processed --dry-run
+
+data-merge-move:  ## processed -> raw TASI (DUPLICATE RISKI, nadir kullanim)
+	$(PYTHON) -m src.data.clear_processed --merge --move
 
 data-merge-dry:  ## processed -> raw on izleme (hicbir sey yapmaz)
-	$(PYTHON) -m src.data.merge_to_raw --dry-run
+	$(PYTHON) -m src.data.clear_processed --merge --dry-run
 
-data-renumber:  ## Tum siniflari 000001, 000002... olarak yeniden numaralandir
+data-renumber:  ## Tum goruntuleri (raw + processed) 000001... formatina cevir
 	$(PYTHON) -m src.data.renumber_images
 
 # ------------------------------------------------------------
 # MODEL TRAINING
 # ------------------------------------------------------------
-train:  ## Tam egitim (varsayilan 35 epoch, override: EPOCHS=N)
-	$(PYTHON) -m src.models.train --epochs $(EPOCHS) --batch-size $(BATCH_SIZE)
+train:
+	$(PYTHON) -m src.models.train --epochs $(EPOCHS) --batch-size $(BATCH_SIZE) --freeze-epochs 3
 
-train-quick:  ## Hizli test egitimi (2 epoch, MLflow yok, EMA kapali)
-	$(PYTHON) -m src.models.train --epochs 2 --no-mlflow --no-ema
+train-quick:  ## Hizli test egitimi (2 epoch, MLflow yok, EMA kapali, freeze 1, MixUp kapali)
+	poetry run python -m src.models.train --epochs 3 --freeze-epochs 1 --no-mlflow --no-ema --no-mixup
 
 train-bg:  ## Egitimi arka planda baslat (train.log'a yazar)
-	@nohup $(PYTHON) -m src.models.train --epochs $(EPOCHS) --batch-size $(BATCH_SIZE) > train.log 2>&1 &
+	@nohup $(PYTHON) -m src.models.train --epochs $(EPOCHS) --batch-size $(BATCH_SIZE) --freeze-epochs 3 --no-mixup > train.log 2>&1 &
 	@echo "Egitim arka planda basladi (PID: $$!)"
 	@echo "Log dosyasi: train.log"
 	@echo "Canli izle : make logs"
@@ -295,8 +303,8 @@ stop:  ## Arka plandaki egitimi durdur
 evaluate:  ## Test set degerlendirmesi (confusion matrix + TTA)
 	$(PYTHON) -m src.models.evaluate
 
-explain:  ## SHAP aciklanabilirlik
-	$(PYTHON) -m src.models.explain
+explain:  ## GradCAM aciklanabilirlik (CPU - 2GB VRAM OOM yok)
+	CUDA_VISIBLE_DEVICES="" $(PYTHON) -m src.models.explain --n-samples 8
 
 tune:  ## Optuna hiperparametre (N_TRIALS=5)
 	$(PYTHON) -m src.models.tune --n-trials $(N_TRIALS)

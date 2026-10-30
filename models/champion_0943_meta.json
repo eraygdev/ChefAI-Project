@@ -1,0 +1,76 @@
+{
+  "checkpoint_file": "models/champion_0943.pt",
+  "checkpoint_size_mb": 22.87,
+  "checkpoint_sha256_16": "521420bc948342f9",
+  "saved_at": "2026-10-30T11:07:38.842640",
+  "training": {
+    "best_epoch": 37,
+    "best_val_acc": 0.9433333333333334,
+    "num_classes": 30,
+    "total_epochs_planned": 50,
+    "epochs_completed": 42,
+    "early_stopping": "manual stop (plateau from E37)",
+    "hyperparams": {
+      "model": "tf_efficientnetv2_b0.in1k",
+      "batch_size": 8,
+      "grad_accum_steps": 4,
+      "effective_batch": 32,
+      "learning_rate": 0.001,
+      "weight_decay": 1e-05,
+      "freeze_epochs": 3,
+      "backbone_lr_after_unfreeze": 0.0001,
+      "head_lr_after_unfreeze": 0.001,
+      "bn_frozen": 59,
+      "mixed_precision": true,
+      "label_smoothing": 0.1,
+      "mixup": true,
+      "cutmix": true,
+      "ema": true,
+      "seed": 42
+    },
+    "data": {
+      "train_samples": 4800,
+      "val_samples": 600,
+      "test_samples": 600,
+      "classes": 30,
+      "split_ratio": "80/10/10",
+      "dataset_version": "v2 (6 classes swapped)",
+      "removed_from_v1": [
+        "tavuk_sote",
+        "imam_bayildi",
+        "pide",
+        "pogaca",
+        "menemen",
+        "ezogelin_corbasi"
+      ],
+      "added_in_v2": [
+        "baklava",
+        "hamsi_tava",
+        "kuru_fasulye",
+        "lahmacun",
+        "simit",
+        "yaprak_sarma"
+      ]
+    }
+  },
+  "evaluation": {
+    "val_acc": 0.9433333333333334,
+    "test_acc": 0.9417,
+    "macro_f1": 0.94,
+    "weighted_f1": 0.94,
+    "tta_views": 4,
+    "confusion_matrix": "models/confusion_matrix.png",
+    "shap_heatmap": "models/shap_heatmap.png"
+  },
+  "compatibility": {
+    "incompatible_with": "champion_08717.pt",
+    "reason": "Class order changed (6 classes removed, 6 added)",
+    "num_classes_same": 30,
+    "class_order_differs": true
+  },
+  "known_issues": [
+    "MLflow artifact upload requires S3 credentials",
+    "SWA started at E41 but not finalized",
+    "Real-world deploy accuracy expected lower than test (open-set problem)"
+  ]
+}
