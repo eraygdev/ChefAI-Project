@@ -1,365 +1,246 @@
 # ChefAI
 
-Akilli yemek analiz ve alerji uyari sistemi.
+ChefAI is an end-to-end MLOps food recognition and allergen warning system.
+Users upload a food image, and the system predicts the dish class, checks it
+against user-defined allergens, and returns potential risk warnings.
+
+The project covers the full MLOps lifecycle: environment setup, data
+cleaning and versioning, model training and tuning, API deployment, and
+service monitoring.
+
+## Architecture Overview
+
+| Layer | Technology |
+| --- | --- |
+| Deep Learning | PyTorch, torchvision, timm (`tf_efficientnetv2_b0.in1k`) |
+| Data Pipeline | OpenCV, Pillow, icrawler, DVC |
+| Experiment Tracking | MLflow, PostgreSQL, MinIO (S3-compatible storage) |
+| Hyperparameter Tuning | Optuna (`MedianPruner`) |
+| Explainability | GradCAM attribution heatmaps |
+| API Serving | FastAPI, Gunicorn, Uvicorn, Pydantic |
+| Monitoring | Prometheus, Grafana (`prometheus-fastapi-instrumentator`) |
+| Code Quality & CI | Poetry, Ruff, Mypy, Pytest, pre-commit, GitHub Actions |
+
+## Key Technical Features
+
+- **Dynamic Class Discovery:** Classes are automatically discovered from
+  subdirectories under `data/raw/`, allowing the dataset to scale or change
+  without hardcoding class lists.
+- **Configurable Training Engine:** Supports configurable batch size, gradient
+  accumulation, AMP mixed precision, Label Smoothing, AdamW, Cosine / Warmup
+  LR schedules, MixUp/CutMix, EMA, SWA, and early stopping.
+- **Evaluation & Explainability:** Includes 4-view Test-Time Augmentation
+  (TTA), per-class classification metrics, confusion matrix export, and
+  GradCAM visualizations.
+- **Standalone API Container:** Uses a lightweight CPU-only PyTorch Docker
+  image for inference without external base-image dependencies.
+
+## Prerequisites
+
+- Python `3.12` (`>=3.12,<3.13`)
+- Poetry `2.x`
+- Docker and Docker Compose
+
+## Installation
+
+```bash
+poetry install
+poetry run pre-commit install
+```
+
+## Project Structure
+
+```text
+MLOps_Project/
+├── .github/workflows/    CI pipeline (lint, typecheck, test, docker build)
+├── data/                 Data directories (raw, processed, staging folders)
+├── docker/               Standalone API Dockerfile and Docker Compose stack
+├── docs/                 Pipeline documentation
+├── models/               Saved checkpoints, plots, and hyperparameter reports
+├── monitoring/           Prometheus scrape configuration
+├── scripts/              Helper inspection and metadata scripts
+├── src/
+│   ├── utils.py          Shared paths, file discovery, size, and safe move/copy helpers
+│   ├── data/             Numbered data pipeline scripts (01-11)
+│   ├── models/           Core modules (config, dataset, model, engine) and scripts (20-23)
+│   └── api/              FastAPI service (prediction, allergen check, metrics)
+├── tests/                Pytest test suite
+├── export.py             Source code exporter
+└── pyproject.toml        Dependencies and tool configuration
+```
+
+## Docker Services
+
+All compose commands can be run from the `docker/` directory.
+
+### Default Stack (MLflow + MinIO + PostgreSQL)
+
+```bash
+cd docker && docker compose up -d
+```
+
+### Full Stack (Default + API + Monitoring)
+
+```bash
+cd docker && docker compose --profile app --profile monitor up -d
+```
+
+### Monitoring Stack Only (Prometheus + Grafana)
+
+```bash
+cd docker && docker compose --profile monitor up -d
+```
+
+### Stop Services
+
+```bash
+cd docker && docker compose down
+```
+
+| Service | URL | Default Credentials |
+| --- | --- | --- |
+| API Docs | `http://localhost:8000/docs` | - |
+| MLflow UI | `http://localhost:5000` | - |
+| MinIO Console | `http://localhost:9001` | `minioadmin` / `minioadmin` |
+| PostgreSQL | `localhost:5432` | `mlflow` / `mlflow` |
+| Prometheus | `http://localhost:9090` | - |
+| Grafana | `http://localhost:3000` | `admin` / `admin` |
 
-Kullanicinin cektigi yemek fotografi analiz edilerek yemek taninir, alerjen
-profili ile karsilastirilir ve risk uyarisi verilir. Proje, MLOps yasam
-dongusunun tamamini kapsar: Setup, Data, Model, Deploy, Monitor.
+## Data Pipeline
 
-## Donanim ve Kisitlar
+All commands are executed from the project root.
+
+| Step | Script | Purpose |
+| --- | --- | --- |
+| `01` | `01_download.py` | Download missing class images using multi-engine web crawling |
+| `02` | `02_filter_suspicious.py` | Detect watermark and menu-card candidates via Canny edges and Hough lines |
+| `03` | `03_filter_broken.py` | Move corrupted or undersized images to `data/brokendata/` |
+| `04` | `04_deduplicate.py` | Remove exact pixel-level duplicates using RGB MD5 hashes |
+| `05` | `05_trim.py` | Move excess images per class to `data/extradata/` |
+| `06` | `06_split.py` | Stratified `80% / 10% / 10%` split into `data/processed/{train,val,test}` |
+| `07` | `07_renumber.py` | Rename images sequentially (`000001`, `000002`, ...) |
+| `10` | `10_status.py` | Print image counts and disk usage across all data folders |
+| `11` | `11_manage.py` | Restore quarantined images or clean staging directories |
 
-| Bilesen | Deger |
-|---------|-------|
-| GPU | NVIDIA GeForce MX330 (2 GB VRAM) |
-| RAM | 7.5 GB (swap 6 GB) |
-| OS | Linux Mint |
-| Python | 3.12 |
+### Common Data Commands
 
-Bu donanim nedeniyle: batch size 8 + gradient accumulation 4 (efektif 32),
-AMP mixed precision, num_workers 1.
+```bash
+# Check current dataset status
+poetry run python -m src.data.10_status
 
-## Veri Seti
+# Preview suspicious images (dry-run by default)
+poetry run python -m src.data.02_filter_suspicious --preview
+poetry run python -m src.data.02_filter_suspicious --move
 
-30 yemek sinifi, hedef 200 gorsel/sinif, toplam 6000 gorsel.
+# Filter broken/small images and remove duplicates
+poetry run python -m src.data.03_filter_broken
+poetry run python -m src.data.04_deduplicate
 
-| Kategori | Siniflar | Adet |
-|----------|----------|------|
-| Corbalar | mercimek, domates, tavuk_suyu | 3 |
-| Et/Tavuk | izgara_tavuk, kofte, etli_nohut, karniyarik, manti, kuru_fasulye | 6 |
-| Sebze/Dolma | zeytinyagli_fasulye, kisir, firin_sebze, yaprak_sarma | 4 |
-| Hamur | pizza, borek, gozleme, lahmacun, simit | 5 |
-| Pilav/Makarna | pirinc_pilavi, bulgur_pilavi | 2 |
-| Kahvaltilik | omlet, pankek, avokado_tost | 3 |
-| Tatlilar | kek, kurabiye, sutlac, baklava | 4 |
-| Balik | hamsi_tava | 1 |
-| Ekstra | patates_kizartmasi, midye | 2 |
+# Trim class counts (configurable target) and renumber
+poetry run python -m src.data.05_trim --target 200
+poetry run python -m src.data.07_renumber --raw-only
 
-Bolme orani: %80 train, %10 val, %10 test (her sinif kendi icinde stratified).
+# Create stratified train/val/test split
+poetry run python -m src.data.06_split
 
-## Model
+# Restore quarantined data or clear processed splits
+poetry run python -m src.data.11_manage restore broken
+poetry run python -m src.data.11_manage restore extra
+poetry run python -m src.data.11_manage clear processed
+```
 
-| Bilesen | Deger |
-|---------|-------|
-| Mimari | EfficientNetV2-B0 (timm) |
-| Framework | PyTorch 2.5.1 + CUDA 12.4 |
-| Input | 224x224 RGB |
-| Output | 30 sinif (softmax) |
-| Loss | CrossEntropyLoss + Label Smoothing (0.1) |
-| Optimizer | AdamW (lr=1e-3, unfreeze backbone=1e-4, weight_decay=1e-5) |
-| Scheduler | CosineAnnealingLR |
-| Epoch | 50 |
-| Batch | 8 (grad_accum 4, efektif 32) |
-| Augmentation | RandomResizedCrop, HorizontalFlip, Rotation, Affine, ColorJitter, Erasing |
-| Regularization | MixUp + CutMix (50/50), EMA (decay=0.999), SWA (E41+) |
+## Model Pipeline
 
-## Pipeline
+| Step | Script | Purpose |
+| --- | --- | --- |
+| `20` | `20_train.py` | Train model with MLflow logging, AMP, MixUp/CutMix, EMA, and SWA |
+| `21` | `21_evaluate.py` | Evaluate test split using 4-view TTA and save `confusion_matrix.png` |
+| `22` | `22_explain.py` | Generate GradCAM attribution heatmaps (`shap_heatmap.png`) |
+| `23` | `23_tune.py` | Run Optuna hyperparameter search and log results to MLflow |
 
-### 1. Setup
+### Training Examples
 
-- Poetry (bagimlilik yonetimi)
-- Docker + Docker Compose
-- pre-commit (ruff, mypy, kalite kontrolleri)
+```bash
+# Quick verification run without MLflow
+poetry run python -m src.models.20_train --epochs 2 --no-mlflow
 
-### 2. Data
+# Custom training parameters
+poetry run python -m src.models.20_train --epochs 35 --batch-size 8 --lr 1e-3
 
-- DVC (veri versiyonlama)
-- Gorsel indirme: icrawler (Google, Bing, Baidu, Flickr)
-- Temizlik: bozuk, kucuk, duplicate, supheli (filigran/menu) ayiklama
-- Otomatik yeniden numaralandirma (000001, 000002, ...)
-- Train/val/test split
+# Disable optional regularizers
+poetry run python -m src.models.20_train --no-mixup --no-ema
+```
 
-### 3. Model
+### Evaluation, Explainability, and Tuning
 
-- MLflow (deney takibi + model registry)
-- Optuna (hiperparametre optimizasyonu)
-- GradCAM (aciklanabilirlik)
-- Model Registry: Development, Staging, Production
+```bash
+# Test-set evaluation + confusion matrix
+poetry run python -m src.models.21_evaluate
 
-### 4. Deploy
+# GradCAM explainability (CPU mode supported)
+CUDA_VISIBLE_DEVICES="" poetry run python -m src.models.22_explain --n-samples 8
 
-- FastAPI (REST servisi)
-- Docker standalone build (CPU-only inference)
-- Gunicorn + Uvicorn (4 worker)
-- GitHub Actions CI/CD
+# Optuna hyperparameter tuning
+poetry run python -m src.models.23_tune --n-trials 5 --timeout 3600
 
-### 5. Monitor
+# Inspect best local checkpoint and top MLflow runs
+poetry run python scripts/best_acc.py
+```
 
-- Evidently (data/model drift)
-- Prometheus (metrik toplama)
-- Grafana (gorsellestirme)
+## API Endpoints
 
-## Kurulum
+The FastAPI service (`src/api/main.py`) loads the checkpoint defined by
+`MODEL_PATH` (default: `models/best_model.pt`).
 
-### On Kosullar
+| Endpoint | Method | Description |
+| --- | --- | --- |
+| `/health` | `GET` | Service status, loaded device, and model state |
+| `/predict` | `POST` | Upload an image to get top-1 prediction and top-5 probabilities |
+| `/check-allergy` | `POST` | Upload an image with comma-separated allergens to receive safety warnings |
+| `/metrics` | `GET` | Prometheus metrics endpoint |
+| `/docs` | `GET` | Interactive OpenAPI (Swagger) documentation |
 
-- Python 3.12
-- Poetry 2.x
-- Docker + Docker Compose
+Supported allergen keys: `gluten`, `sut`, `yumurta`, `et`, `tavuk`,
+`avokado`, `nohut`, `balik`, `findik`.
 
-### Adimlar
+## Code Quality and Testing
 
-    poetry install
-    poetry run pre-commit install
+```bash
+# Lint and format checks
+poetry run ruff check src/ tests/ scripts/
+poetry run ruff format --check src/ tests/ scripts/
 
-## Docker Servisleri
+# Static type checking
+poetry run mypy src/
 
-Tum komutlar `docker/` dizininden veya proje kokunden calisir.
+# Run tests with coverage
+poetry run pytest tests/ -v
 
-### Varsayilan stack (MLflow + MinIO + PostgreSQL)
-
-    cd docker && docker compose up -d
-
-| Servis | URL | Kullanici |
-|--------|-----|-----------|
-| MLflow UI | http://localhost:5000 | - |
-| MinIO Console | http://localhost:9001 | minioadmin / minioadmin |
-| PostgreSQL | localhost:5432 | mlflow / mlflow |
-
-### Monitoring stack (Prometheus + Grafana)
-
-    cd docker && docker compose --profile monitor up -d
-
-| Servis | URL | Kullanici |
-|--------|-----|-----------|
-| Prometheus | http://localhost:9090 | - |
-| Grafana | http://localhost:3000 | admin / admin |
-
-### Durdurma
-
-    cd docker && docker compose down
-
-### Temizlik
-
-    # Proje container + volume (MLflow verisi silinir)
-    cd docker && docker compose down -v
-
-    # Kullanilmayan Docker image/container/cache (filtresiz)
-    docker builder prune -f
-    docker image prune -a -f
-    docker container prune -f
-
-## Veri Pipeline
-
-Tum komutlar proje kokunden (`~/Masaustu/MLOps_Project`) calisir.
-
-### Durum raporu
-
-    poetry run python -m src.data.10_status
-
-### Tam pipeline (suspicious -> broken -> dedup -> trim -> renumber -> split)
-
-    poetry run python -m src.data.02_filter_suspicious --preview
-    poetry run python -m src.data.03_filter_broken
-    poetry run python -m src.data.04_deduplicate
-    poetry run python -m src.data.05_trim
-    poetry run python -m src.data.07_renumber --raw-only
-    poetry run python -m src.data.06_split
-
-### Tek tek
-
-    # Filigran/menu supheli gorseller (once preview, tasimak icin --move)
-    poetry run python -m src.data.02_filter_suspicious --preview
-    poetry run python -m src.data.02_filter_suspicious --move
-
-    # Bozuk/kucuk gorseller
-    poetry run python -m src.data.03_filter_broken
-
-    # Duplicate gorseller (hash bazli)
-    poetry run python -m src.data.04_deduplicate
-
-    # Fazlaliklari extradata'ya tasi (200/sinif hedefi)
-    poetry run python -m src.data.05_trim
-
-    # Train/val/test bol
-    poetry run python -m src.data.06_split
-
-    # Yeniden numaralandir (000001, ...)
-    poetry run python -m src.data.07_renumber
-
-### Geri alma / temizlik
-
-    # brokendata veya extradata'dan raw'a geri tasi
-    poetry run python -m src.data.11_manage restore broken
-    poetry run python -m src.data.11_manage restore extra
-
-    # processed'i sil (raw'dan yeniden split icin)
-    poetry run python -m src.data.11_manage clear processed
-
-    # (Nadir) processed'i raw'a birlestir - DUPLICATE RISKI
-    poetry run python -m src.data.11_manage clear processed --merge --move
-
-## Model Egitimi
-
-### 2 epoch hizli test (MLflow yok, VRAM/sure testi)
-
-    poetry run python -m src.models.20_train --epochs 2 --no-mlflow
-
-### Tam egitim (35 epoch, MLflow ile)
-
-    poetry run python -m src.models.20_train --epochs 35 --batch-size 8
-
-### Arka planda egitim
-
-    nohup poetry run python -m src.models.20_train --epochs 35 > train.log 2>&1 &
-
-    # Log izle (Ctrl+C ile cik, egitim devam eder)
-    tail -f train.log
-
-    # Durdur
-    pkill -f "src.models.20_train"
-
-### Parametre override
-
-    poetry run python -m src.models.20_train --epochs 30 --batch-size 4 --lr 5e-5
-
-### Opsiyonel kapatma
-
-    # MixUp olmadan
-    poetry run python -m src.models.20_train --epochs 35 --no-mixup
-
-    # EMA olmadan
-    poetry run python -m src.models.20_train --epochs 35 --no-ema
-
-    # Ikisi de kapali
-    poetry run python -m src.models.20_train --epochs 35 --no-mixup --no-ema
-
-## Degerlendirme
-
-### Test set + confusion matrix + TTA
-
-    poetry run python -m src.models.21_evaluate
-
-Cikti: `models/confusion_matrix.png` (sinif bazli rapor + heatmap).
-
-### GradCAM aciklanabilirlik
-
-    CUDA_VISIBLE_DEVICES="" poetry run python -m src.models.22_explain --n-samples 8
-
-Cikti: `models/shap_heatmap.png` (model her gorselin neresine bakiyor).
-
-### Optuna hiperparametre optimizasyonu
-
-    # 5 trial, 1 saat max
-    poetry run python -m src.models.23_tune --n-trials 5 --timeout 3600
-
-Cikti: `models/best_hyperparams.txt` + MLflow'da en iyi parametreler.
-
-### En iyi dogruluk raporu
-
-    poetry run python scripts/best_acc.py
-
-Checkpoint val_acc + MLflow top 5 run gosterir.
-
-## Kalite ve Test
-
-    # Ruff lint
-    poetry run ruff check src/ tests/ scripts/
-
-    # Ruff format
-    poetry run ruff format src/ tests/ scripts/
-    poetry run ruff check --fix src/ tests/ scripts/
-
-    # mypy tip kontrolu
-    poetry run mypy src/
-
-    # Tum pre-commit hook'lari
-    poetry run pre-commit run --all-files
-
-    # pytest
-    poetry run pytest tests/ -v
-    poetry run pytest tests/ -v --cov=src --cov-report=term-missing
-
-## Export
-
-Tum kodu tek dosyaya yaz (sunum/arsiv icin):
-
-    poetry run python export.py -o project_export.txt
-
-Cikti: `project_export.txt` (~40-50 KB).
-
-## Proje Yapisi
-
-    MLOps_Project/
-    ├── data/
-    │   ├── raw/            Ham gorseller (30 sinif)
-    │   ├── processed/      Train/val/test split
-    │   ├── brokendata/     Bozuk/kucuk gorseller
-    │   ├── extradata/      Fazlaliklar
-    │   ├── suspicious/     Filigran/menu supheliler
-    │   └── reports/        CSV raporlari
-    ├── src/
-    │   ├── utils.py        Ortak dosya, boyut ve guvenli tasima yardimcilari
-    │   ├── data/           Numarali veri pipeline scriptleri (01-11)
-    │   ├── models/         Cekirdek moduller + numarali egitim/analiz scriptleri (20-23)
-    │   └── api/            FastAPI inference ve alerji servisi
-    ├── monitoring/         Prometheus config + drift check
-    ├── docker/             Dockerfile + docker-compose.yml
-    ├── scripts/            Yardimci scriptler
-    ├── tests/              pytest testleri
-    ├── docs/               Dokumantasyon
-    ├── models/             Egitilmis model agirliklari
-    ├── mlruns/             MLflow local run dizini
-    ├── .github/workflows/  CI/CD
-    ├── pyproject.toml      Bagimliliklar + tool config
-    └── poetry.lock         Kilit dosyasi
-
-## API
-
-| Endpoint | Metod | Aciklama |
-|----------|-------|----------|
-| `/predict` | POST | Fotograf yukle, yemek tahmini + guven skoru |
-| `/check-allergy` | POST | Fotograf + kullanici alerjenleri, uyari |
-| `/health` | GET | Servis saglik kontrolu |
-| `/docs` | GET | Otomatik OpenAPI dokumantasyonu |
-
-Alerji modulu 30 sinif icin alerjen haritasini icerir (gluten, sut, yumurta,
-et, tavuk, avokado, nohut, balik, findik). Kullanici alerjenleri ile kesisim
-varsa uyari dondurulur.
-
-## Veri Kalitesi
-
-Her gorsel su asamalardan gecer:
-
-1. **02_filter_suspicious**: Canny kenar + Hough cizgi analizi ile filigran/menu karti tespit
-2. **03_filter_broken**: PIL ile bozukluk + boyut kontrolu (200x200 minimum)
-3. **04_deduplicate**: MD5 piksel hash ile birebir ayni gorselleri silme
-4. **05_trim**: Sinif basina 200 gorsel hedefi (fazlasi `extradata/`'ya)
-5. **06_split**: Stratified %80/%10/%10 (`train`/`val`/`test`)
-6. **07_renumber**: `000001`, `000002`, ... formatinda sirali numaralandirma
-
-Pipeline deterministik (SEED=42), tekrar calistirilabilir.
+# Run all pre-commit hooks
+poetry run pre-commit run --all-files
+```
 
 ## CI/CD
 
-GitHub Actions (`.github/workflows/ci.yml`):
+GitHub Actions (`.github/workflows/ci.yml`) runs two jobs on push and pull
+requests targeting `main`:
 
-- **lint-and-test**: ruff lint, ruff format check, mypy, pytest
-- **docker-build**: multi-stage Dockerfile build testi
+1. **lint-and-test:** Executes `ruff check`, `ruff format --check`, `mypy`,
+   and `pytest`.
+2. **docker-build:** Verifies that `docker/Dockerfile` builds cleanly.
 
-Her `git push` ve `pull_request`'te otomatik calisir.
+## Export
 
-## Monitoring (planlanan)
+Export all text-based project source files into a single file:
 
-- **Evidently**: Referans (train) vs. canli veri drift karsilastirmasi
-- **Prometheus**: `http_requests_total`, `http_request_duration_seconds`,
-  `model_predictions_total` gibi metrikler
-- **Grafana**: Dashboard (latency p50/p95/p99, request rate, error rate,
-  prediction distribution)
+```bash
+poetry run python export.py -o project_export.txt
+```
 
-## Bilinen Kisitlar
+## Authors
 
-- MX330 2 GB VRAM: batch 8, AMP zorunlu
-- Web scraping etiket gurultusu: %5-15 yanlis etiket kabul edildi
-- 30 sinif, bazi siniflar gorsel olarak cok yakin (corbalar, hamur isleri):
-  confusion matrix'te karsilikli karisim normal
-- Model tek GPU'da egitilir (distributed training yok)
-- Test dogrulugu: %94.17 (30 sinif, 600 test ornegi)
-- Gercek kullanici fotografinda tahmini: %75-85 (acik set problemi)
+Eray, Burak
 
-## Gelistirici
+## License
 
-Eray, Burak - MLOps ve AI Systems dersi
-
-## Lisans
-
-MIT (bkz. LICENSE)
+MIT License (see [LICENSE](LICENSE))
