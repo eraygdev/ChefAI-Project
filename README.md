@@ -16,7 +16,7 @@ dongusunun tamamini kapsar: Setup, Data, Model, Deploy, Monitor.
 | Python | 3.12 |
 
 Bu donanim nedeniyle: batch size 8 + gradient accumulation 4 (efektif 32),
-AMP mixed precision, num_workers 2.
+AMP mixed precision, num_workers 1.
 
 ## Veri Seti
 
@@ -41,11 +41,11 @@ Bolme orani: %80 train, %10 val, %10 test (her sinif kendi icinde stratified).
 | Bilesen | Deger |
 |---------|-------|
 | Mimari | EfficientNetV2-B0 (timm) |
-| Framework | PyTorch 2.4.1 + CUDA 12.1 |
+| Framework | PyTorch 2.5.1 + CUDA 12.4 |
 | Input | 224x224 RGB |
 | Output | 30 sinif (softmax) |
 | Loss | CrossEntropyLoss + Label Smoothing (0.1) |
-| Optimizer | AdamW (lr=1e-4, weight_decay=1e-5) |
+| Optimizer | AdamW (lr=1e-3, unfreeze backbone=1e-4, weight_decay=1e-5) |
 | Scheduler | CosineAnnealingLR |
 | Epoch | 50 |
 | Batch | 8 (grad_accum 4, efektif 32) |
@@ -72,13 +72,13 @@ Bolme orani: %80 train, %10 val, %10 test (her sinif kendi icinde stratified).
 
 - MLflow (deney takibi + model registry)
 - Optuna (hiperparametre optimizasyonu)
-- SHAP (aciklanabilirlik)
+- GradCAM (aciklanabilirlik)
 - Model Registry: Development, Staging, Production
 
 ### 4. Deploy
 
 - FastAPI (REST servisi)
-- Docker multi-stage build
+- Docker standalone build (CPU-only inference)
 - Gunicorn + Uvicorn (4 worker)
 - GitHub Actions CI/CD
 
@@ -288,9 +288,10 @@ Cikti: `project_export.txt` (~40-50 KB).
     │   ├── suspicious/     Filigran/menu supheliler
     │   └── reports/        CSV raporlari
     ├── src/
-    │   ├── data/           Veri pipeline scriptleri
-    │   ├── models/         Model egitimi ve degerlendirme
-    │   └── api/            FastAPI (deploy asamasinda)
+    │   ├── utils.py        Ortak dosya, boyut ve guvenli tasima yardimcilari
+    │   ├── data/           Numarali veri pipeline scriptleri (01-11)
+    │   ├── models/         Cekirdek moduller + numarali egitim/analiz scriptleri (20-23)
+    │   └── api/            FastAPI inference ve alerji servisi
     ├── monitoring/         Prometheus config + drift check
     ├── docker/             Dockerfile + docker-compose.yml
     ├── scripts/            Yardimci scriptler
@@ -302,7 +303,7 @@ Cikti: `project_export.txt` (~40-50 KB).
     ├── pyproject.toml      Bagimliliklar + tool config
     └── poetry.lock         Kilit dosyasi
 
-## API (planlanan)
+## API
 
 | Endpoint | Metod | Aciklama |
 |----------|-------|----------|
@@ -312,19 +313,19 @@ Cikti: `project_export.txt` (~40-50 KB).
 | `/docs` | GET | Otomatik OpenAPI dokumantasyonu |
 
 Alerji modulu 30 sinif icin alerjen haritasini icerir (gluten, sut, yumurta,
-et, tavuk, avokado, nohut). Kullanici alerjenleri ile kesisim varsa uyari
-dondurulur.
+et, tavuk, avokado, nohut, balik, findik). Kullanici alerjenleri ile kesisim
+varsa uyari dondurulur.
 
 ## Veri Kalitesi
 
 Her gorsel su asamalardan gecer:
 
-1. **move_suspicious**: Hough cizgi analizi ile filigran/menu karti tespit
-2. **move_broken**: PIL ile bozukluk + boyut kontrolu (200x200 minimum)
-3. **remove_duplicates**: MD5 hash ile birebir ayni gorseller
-4. **trim_to_extradata**: Sinif basina 200 gorsel hedefi
-5. **split_dataset**: Stratified %80/%10/%10
-6. **renumber_class**: 000001, 000002, ... formatinda
+1. **02_filter_suspicious**: Canny kenar + Hough cizgi analizi ile filigran/menu karti tespit
+2. **03_filter_broken**: PIL ile bozukluk + boyut kontrolu (200x200 minimum)
+3. **04_deduplicate**: MD5 piksel hash ile birebir ayni gorselleri silme
+4. **05_trim**: Sinif basina 200 gorsel hedefi (fazlasi `extradata/`'ya)
+5. **06_split**: Stratified %80/%10/%10 (`train`/`val`/`test`)
+6. **07_renumber**: `000001`, `000002`, ... formatinda sirali numaralandirma
 
 Pipeline deterministik (SEED=42), tekrar calistirilabilir.
 
