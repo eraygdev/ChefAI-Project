@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import cast
+
 import timm
 import torch.nn as nn
 
@@ -12,6 +14,7 @@ def build_model(
     pretrained: bool = True,
     dropout: float = 0.2,
 ) -> nn.Module:
+    """Build a timm classification backbone with custom class count and dropout."""
     return timm.create_model(
         model_name,
         pretrained=pretrained,
@@ -21,9 +24,11 @@ def build_model(
 
 
 def get_target_layer(model: nn.Module) -> nn.Module:
-    """SHAP / GradCAM icin son conv katmani."""
-    if hasattr(model, "conv_head"):
-        return model.conv_head
-    if hasattr(model, "features"):
-        return model.features[-1]
-    raise ValueError("Hedef katman bulunamadi")
+    """Return the last convolutional layer for GradCAM or attribution."""
+    conv_head = getattr(model, "conv_head", None)
+    if isinstance(conv_head, nn.Module):
+        return conv_head
+    features = getattr(model, "features", None)
+    if isinstance(features, nn.Sequential | nn.ModuleList) and len(features) > 0:
+        return cast(nn.Module, features[-1])
+    raise ValueError("Target convolutional layer not found")

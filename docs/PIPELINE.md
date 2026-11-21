@@ -12,146 +12,113 @@ Poetry aktif olmali: `poetry --version`
 Veri konumu: `data/raw/` (30 sinif, hedef 200 gorsel/sinif)
 
 Kontrol:
-poetry run python src/data/report_status.py
+
+    poetry run python -m src.data.10_status
 
 ---
 
-## ADIM 1: Gorsel Indirme (Zaten Yapildi)
+## ADIM 1: Gorsel Indirme (Opsiyonel)
 
-Script : `src/data/more_to_target.py`
-Amac : Eksik siniflari hedefe (250) tamamlar.
-Not : Zaten 9668 gorsel var. Eksik varsa calistir.
+Script : `src/data/01_download.py`
+Amac   : Eksik siniflari hedefe tamamlar.
 
-    poetry run python src/data/more_to_target.py
-
----
-
-## ADIM 2: Bozuk ve Kucuk Gorselleri Ayir
-
-Script : `src/data/move_broken.py`
-Amac : Bozuk, acilamayan, 200x200'den kucuk gorselleri
-`data/brokendata/` altina tasir.
-Cikti : `data/brokendata/<sinif>/`
-
-    poetry run python src/data/move_broken.py
-
-Geri almak istersen (yanlis karar verdiysen):
-
-    poetry run python src/data/restore_broken.py
+    poetry run python -m src.data.01_download
 
 ---
 
-## ADIM 3: Duplicate (Ayni) Gorselleri Sil
+## ADIM 2: Supheli (Filigran / Menu Karti) Gorselleri Ayir
 
-Script : `src/data/remove_duplicates.py`
-Amac : Hash bazli karsilastirma ile ayni gorselleri siler.
+Script : `src/data/02_filter_suspicious.py`
+Amac   : Filigran ve menu karti adaylarini `data/suspicious/` altina tasir.
 
-    poetry run python src/data/remove_duplicates.py
+    poetry run python -m src.data.02_filter_suspicious --preview
+    poetry run python -m src.data.02_filter_suspicious --move
 
----
+Geri almak icin:
 
-## ADIM 4: Fazlaliklari Extradata'ya Tasi
-
-Script : `src/data/trim_to_extradata.py`
-Amac : Her sinifta 200'den fazla gorsel varsa, fazlasini
-`data/extradata/` altina tasir.
-Cikti : `data/extradata/<sinif>/`
-
-    poetry run python src/data/trim_to_extradata.py
+    poetry run python -m src.data.11_manage restore suspicious
 
 ---
 
-## ADIM 5: Durum Kontrolu
+## ADIM 3: Bozuk ve Kucuk Gorselleri Ayir
 
-Script : `src/data/report_status.py`
-Amac : Ham, brokendata, extradata, processed klasorlerinin
-guncel durumunu raporlar.
+Script : `src/data/03_filter_broken.py`
+Amac   : Bozuk, acilamayan veya 200x200'den kucuk gorselleri `data/brokendata/` altina tasir.
 
-    poetry run python src/data/report_status.py
+    poetry run python -m src.data.03_filter_broken
 
-Beklenen:
+Geri almak icin:
 
-- raw/ : 30 sinif, her biri ~200 gorsel
-- brokendata/: bozuk/kucuk gorseller
-- extradata/ : fazla gorseller
+    poetry run python -m src.data.11_manage restore broken
 
 ---
 
-## ADIM 6: Train / Val / Test Bolumu
+## ADIM 4: Duplicate (Ayni) Gorselleri Sil
 
-Script : `src/data/split_dataset.py`
-Amac : `data/raw/` icindeki gorselleri %80/%10/%10 oraninda
-train/val/test olarak `data/processed/` altina kopyalar.
-Cikti : `data/processed/{train,val,test}/<sinif>/`
+Script : `src/data/04_deduplicate.py`
+Amac   : MD5 piksel hash karsilastirmasi ile birebir ayni gorselleri siler.
 
-    poetry run python src/data/split_dataset.py
+    poetry run python -m src.data.04_deduplicate
+
+---
+
+## ADIM 5: Fazlaliklari Extradata'ya Tasi
+
+Script : `src/data/05_trim.py`
+Amac   : Her sinifta 200'den fazla gorsel varsa, fazlasini `data/extradata/` altina tasir.
+
+    poetry run python -m src.data.05_trim
+
+Geri almak icin:
+
+    poetry run python -m src.data.11_manage restore extra
+
+---
+
+## ADIM 6: Yeniden Numaralandirma ve Durum Kontrolu
+
+Script : `src/data/07_renumber.py`, `src/data/10_status.py`
+Amac   : `data/raw/` gorsellerini 000001.. formatina cevirir ve guncel durumu raporlar.
+
+    poetry run python -m src.data.07_renumber --raw-only
+    poetry run python -m src.data.10_status
+
+---
+
+## ADIM 7: Train / Val / Test Bolumu
+
+Script : `src/data/06_split.py`
+Amac   : `data/raw/` icindeki gorselleri %80/%10/%10 oraninda `data/processed/{train,val,test}/<sinif>/` altina kopyalar.
+
+    poetry run python -m src.data.06_split
 
 Beklenen (30 sinif x 200 gorsel):
-
-- train: 30 sinif x 160 gorsel = 4800
-- val : 30 sinif x 20 gorsel = 600
-- test : 30 sinif x 20 gorsel = 600
+- train : 4800
+- val   : 600
+- test  : 600
 - TOPLAM: 6000
 
 ---
 
-## ADIM 7: DVC ile Versiyonlama
-
-Ilk kurulum (bir kere):
-
-    poetry run dvc init
-    git add .dvc .dvcignore
-    git commit -m "Init DVC"
-
-Veriyi takip et:
+## ADIM 8: DVC ile Versiyonlama
 
     poetry run dvc add data/raw
     poetry run dvc add data/processed
-
-Git'e ekle:
-
-    git add data/raw.dvc data/processed.dvc data/.gitignore
-    git commit -m "Add data to DVC"
+    git add data/*.dvc data/.gitignore
+    git commit -m "Add dataset to DVC"
 
 ---
 
 ## Ozet Tablo
 
-| #   | Script               | Amac                        | Cikti            |
-| --- | -------------------- | --------------------------- | ---------------- |
-| 1   | more_to_target.py    | Eksik gorselleri indir      | data/raw/        |
-| 2   | move_broken.py       | Bozuk/kucuk gorselleri ayir | data/brokendata/ |
-| 3   | remove_duplicates.py | Duplicate sil               | (silinir)        |
-| 4   | trim_to_extradata.py | Fazlaliklari tasi           | data/extradata/  |
-| 5   | report_status.py     | Durum raporu                | (ekran)          |
-| 6   | split_dataset.py     | Train/val/test bol          | data/processed/  |
-| 7   | (DVC)                | Versiyonla                  | .dvc dosyalari   |
-| -   | restore_broken.py    | brokendata'dan geri tasi    | data/raw/        |
-
----
-
-## Tam Pipeline (Tek Seferde)
-
-    # 1. Durum kontrolu
-    poetry run python src/data/report_status.py
-
-    # 2. Bozuk/kucuk ayir
-    poetry run python src/data/move_broken.py
-
-    # 3. Duplicate sil
-    poetry run python src/data/remove_duplicates.py
-
-    # 4. Fazlaliklari tasi
-    poetry run python src/data/trim_to_extradata.py
-
-    # 5. Tekrar durum kontrolu
-    poetry run python src/data/report_status.py
-
-    # 6. Train/val/test bol
-    poetry run python src/data/split_dataset.py
-
-    # 7. DVC ile versiyonla
-    poetry run dvc add data/raw
-    poetry run dvc add data/processed
-    git add data/*.dvc data/.gitignore .dvc .dvcignore
-    git commit -m "Add dataset to DVC"
+| #  | Script                   | Amac                        | Cikti              |
+| -- | ------------------------ | --------------------------- | ------------------ |
+| 01 | `01_download.py`         | Eksik gorselleri indir      | `data/raw/`        |
+| 02 | `02_filter_suspicious.py`| Filigran/menu ayir          | `data/suspicious/` |
+| 03 | `03_filter_broken.py`    | Bozuk/kucuk ayir            | `data/brokendata/` |
+| 04 | `04_deduplicate.py`      | Duplicate sil               | (silinir)          |
+| 05 | `05_trim.py`             | Fazlaliklari tasi           | `data/extradata/`  |
+| 06 | `06_split.py`            | Train/val/test bol          | `data/processed/`  |
+| 07 | `07_renumber.py`         | `000001...` numaralandir    | `raw/` & `proc/`   |
+| 10 | `10_status.py`           | Durum ve disk raporu        | (ekran)            |
+| 11 | `11_manage.py`           | Geri alma / temizlik CLI    | `raw/` / temizlik  |

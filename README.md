@@ -144,103 +144,103 @@ Tum komutlar proje kokunden (`~/Masaustu/MLOps_Project`) calisir.
 
 ### Durum raporu
 
-    poetry run python -m src.data.report_status
+    poetry run python -m src.data.10_status
 
-### Tam pipeline (suspicious -> broken -> duplicates -> trim -> split)
+### Tam pipeline (suspicious -> broken -> dedup -> trim -> renumber -> split)
 
-    poetry run python -m src.data.move_suspicious --dry-run
-    poetry run python -m src.data.move_broken
-    poetry run python -m src.data.remove_duplicates
-    poetry run python -m src.data.trim_to_extradata
-    poetry run python -m src.data.split_dataset
+    poetry run python -m src.data.02_filter_suspicious --preview
+    poetry run python -m src.data.03_filter_broken
+    poetry run python -m src.data.04_deduplicate
+    poetry run python -m src.data.05_trim
+    poetry run python -m src.data.07_renumber --raw-only
+    poetry run python -m src.data.06_split
 
 ### Tek tek
 
-    # Filigran/menu supheli gorseller (once dry-run)
-    poetry run python -m src.data.move_suspicious --dry-run
-    poetry run python -m src.data.move_suspicious
+    # Filigran/menu supheli gorseller (once preview, tasimak icin --move)
+    poetry run python -m src.data.02_filter_suspicious --preview
+    poetry run python -m src.data.02_filter_suspicious --move
 
     # Bozuk/kucuk gorseller
-    poetry run python -m src.data.move_broken
+    poetry run python -m src.data.03_filter_broken
 
     # Duplicate gorseller (hash bazli)
-    poetry run python -m src.data.remove_duplicates
+    poetry run python -m src.data.04_deduplicate
 
     # Fazlaliklari extradata'ya tasi (200/sinif hedefi)
-    poetry run python -m src.data.trim_to_extradata
+    poetry run python -m src.data.05_trim
 
     # Train/val/test bol
-    poetry run python -m src.data.split_dataset
+    poetry run python -m src.data.06_split
 
     # Yeniden numaralandir (000001, ...)
-    poetry run python -m src.data.renumber_images
+    poetry run python -m src.data.07_renumber
 
 ### Geri alma / temizlik
 
-    # brokendata'dan raw'a geri tasi
-    poetry run python src/data/restore_broken.py
+    # brokendata veya extradata'dan raw'a geri tasi
+    poetry run python -m src.data.11_manage restore broken
+    poetry run python -m src.data.11_manage restore extra
 
     # processed'i sil (raw'dan yeniden split icin)
-    poetry run python -m src.data.merge_to_raw
-    # veya
-    make data-clear
+    poetry run python -m src.data.11_manage clear processed
 
     # (Nadir) processed'i raw'a birlestir - DUPLICATE RISKI
-    poetry run python -m src.data.merge_to_raw --merge --move
+    poetry run python -m src.data.11_manage clear processed --merge --move
 
 ## Model Egitimi
 
 ### 2 epoch hizli test (MLflow yok, VRAM/sure testi)
 
-    poetry run python -m src.models.train --epochs 2 --no-mlflow
+    poetry run python -m src.models.20_train --epochs 2 --no-mlflow
 
 ### Tam egitim (35 epoch, MLflow ile)
 
-    poetry run python -m src.models.train --epochs 35 --batch-size 8
+    poetry run python -m src.models.20_train --epochs 35 --batch-size 8
 
 ### Arka planda egitim
 
-    nohup poetry run python -m src.models.train --epochs 35 > train.log 2>&1 &
+    nohup poetry run python -m src.models.20_train --epochs 35 > train.log 2>&1 &
 
     # Log izle (Ctrl+C ile cik, egitim devam eder)
     tail -f train.log
 
     # Durdur
-    pkill -f "src.models.train"
+    pkill -f "src.models.20_train"
 
 ### Parametre override
 
-    poetry run python -m src.models.train --epochs 30 --batch-size 4 --lr 5e-5
+    poetry run python -m src.models.20_train --epochs 30 --batch-size 4 --lr 5e-5
 
 ### Opsiyonel kapatma
 
     # MixUp olmadan
-    poetry run python -m src.models.train --epochs 35 --no-mixup
+    poetry run python -m src.models.20_train --epochs 35 --no-mixup
 
     # EMA olmadan
-    poetry run python -m src.models.train --epochs 35 --no-ema
+    poetry run python -m src.models.20_train --epochs 35 --no-ema
 
     # Ikisi de kapali
-    poetry run python -m src.models.train --epochs 35 --no-mixup --no-ema
+    poetry run python -m src.models.20_train --epochs 35 --no-mixup --no-ema
 
 ## Degerlendirme
 
 ### Test set + confusion matrix + TTA
 
-    poetry run python -m src.models.evaluate
+    poetry run python -m src.models.21_evaluate
 
 Cikti: `models/confusion_matrix.png` (sinif bazli rapor + heatmap).
 
-### SHAP aciklanabilirlik
+### GradCAM aciklanabilirlik
 
-    poetry run python -m src.models.explain
+    CUDA_VISIBLE_DEVICES="" poetry run python -m src.models.22_explain --n-samples 8
 
 Cikti: `models/shap_heatmap.png` (model her gorselin neresine bakiyor).
 
 ### Optuna hiperparametre optimizasyonu
 
     # 5 trial, 1 saat max
-    poetry run python -m src.models.tune --n-trials 5 --timeout 3600
+    poetry run python -m src.models.23_tune --n-trials 5 --timeout 3600
 
 Cikti: `models/best_hyperparams.txt` + MLflow'da en iyi parametreler.
 

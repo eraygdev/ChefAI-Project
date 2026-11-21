@@ -7,8 +7,8 @@ readme = "README.md"
 requires-python = ">=3.12,<3.13"
 dependencies = [
     # Deep Learning
-    "torch==2.4.1",
-    "torchvision==0.19.1",
+    "torch==2.5.1",
+    "torchvision==0.20.1",
     "timm>=1.0.30,<2.0.0",
     "numpy>=1.26.4,<2.0",
     "pillow>=10.4.0,<11.0",
@@ -46,7 +46,6 @@ dependencies = [
     "matplotlib>=3.9",
     "seaborn>=0.13",
     "opencv-python-headless<4.11",
-    "boto3 (>=1.43.121,<2.0.0)",
 ]
 
 [tool.poetry]
@@ -70,9 +69,6 @@ priority = "explicit"
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
-# ---------------------------------------------------------------
-# RUFF - Linting + Formatting
-# ---------------------------------------------------------------
 [tool.ruff]
 line-length = 100
 target-version = "py312"
@@ -80,18 +76,18 @@ exclude = [".git", "__pycache__", "venv", ".venv", "mlruns", "data", "notebooks"
 
 [tool.ruff.lint]
 select = [
-    "E",   # pycodestyle errors
-    "W",   # pycodestyle warnings
-    "F",   # pyflakes
-    "I",   # isort
-    "B",   # flake8-bugbear
-    "C4",  # flake8-comprehensions
-    "UP",  # pyupgrade
+    "E",
+    "W",
+    "F",
+    "I",
+    "B",
+    "C4",
+    "UP",
 ]
 ignore = [
-    "E203",  # whitespace before ':'
-    "E501",  # line too long (line-length handles it)
-    "B008",  # do not perform function call in argument defaults
+    "E203",
+    "E501",
+    "B008",
 ]
 
 [tool.ruff.lint.isort]
@@ -101,9 +97,6 @@ known-first-party = ["src"]
 quote-style = "double"
 indent-style = "space"
 
-# ---------------------------------------------------------------
-# MYPY
-# ---------------------------------------------------------------
 [tool.mypy]
 python_version = "3.12"
 warn_return_any = true
@@ -111,9 +104,6 @@ warn_unused_configs = true
 ignore_missing_imports = true
 exclude = ["venv", ".venv", "data", "notebooks", "mlruns"]
 
-# ---------------------------------------------------------------
-# PYTEST
-# ---------------------------------------------------------------
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = "test_*.py"

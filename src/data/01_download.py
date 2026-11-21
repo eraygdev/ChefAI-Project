@@ -1,9 +1,10 @@
+"""Download class images up to the target count using icrawler engines.
+
+Usage:
+    poetry run python -m src.data.01_download
 """
-ChefAI - Fills all classes up to the target count (250).
-Stops downloading for a class once it reaches the target.
-Does NOT delete existing excess images.
-Uses: Google (with date filters) + Bing + Baidu + Flickr + DuckDuckGo.
-"""
+
+from __future__ import annotations
 
 import time
 from pathlib import Path
@@ -15,20 +16,11 @@ from icrawler.builtin import (
     GoogleImageCrawler,
 )
 
-# -------------------------------------------------------------------
-# PATHS / YOLLAR
-# -------------------------------------------------------------------
-SCRIPT_DIR = Path(__file__).resolve().parent
-PROJECT_ROOT = SCRIPT_DIR.parent.parent
-DATA_DIR = PROJECT_ROOT / "data"
-OUTPUT_DIR = DATA_DIR / "raw"
+from src.utils import IMAGE_EXTENSIONS, PROJECT_ROOT, RAW_DIR, count_images
 
-# -------------------------------------------------------------------
-# SETTINGS / AYARLAR
-# -------------------------------------------------------------------
+OUTPUT_DIR = RAW_DIR
+
 TARGET_COUNT = 220
-EXTRA_RATIO = 1.0
-MIN_DOWNLOAD = 50
 WAIT_SECONDS = 2.5
 
 # Tarih filtreleri: Google icin farkli yillar kullanilir (daha cesitli sonuclar)
@@ -709,17 +701,6 @@ FOODS = {
         "creamy rice pudding",
     ],
 }
-
-IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".bmp"}
-
-
-# -------------------------------------------------------------------
-# HELPERS / YARDIMCI FONKSIYONLAR
-# -------------------------------------------------------------------
-def count_images(folder: Path) -> int:
-    """Klasordeki gorsel sayisini dondurur."""
-    return len([p for p in folder.glob("*.*") if p.suffix.lower() in IMAGE_EXTENSIONS])
-
 
 def max_index(folder: Path) -> int:
     """Klasordeki en buyuk sayisal dosya adi (ornek: 00123.jpg -> 123)."""

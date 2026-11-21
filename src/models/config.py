@@ -5,17 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-SCRIPT_DIR = Path(__file__).resolve().parent
-PROJECT_ROOT = SCRIPT_DIR.parent.parent
-DATA_DIR = PROJECT_ROOT / "data"
-PROCESSED_DIR = DATA_DIR / "processed"
-MODELS_DIR = PROJECT_ROOT / "models"
-
-# -------------------------------------------------------------------
-# CLASSES — data/raw/ altindan dinamik okunur
-# Sadece gercek sinif klasorleri (gizli/temp/silinen haric)
-# -------------------------------------------------------------------
-RAW_DIR = DATA_DIR / "raw"
+from src.utils import MODELS_DIR, PROCESSED_DIR, RAW_DIR
 
 
 def _discover_classes() -> list[str]:

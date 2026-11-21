@@ -65,14 +65,12 @@ services:
     container_name: chefai-api
     ports:
       - "8000:8000"
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [gpu]
-    # ... geri kalan aynı
+    environment:
+      - MODEL_PATH=/app/models/best_model.pt
+    volumes:
+      - ../data/raw:/app/data/raw:ro
+      - ../models:/app/models:ro
+    restart: unless-stopped
 
   prometheus:
     profiles: ["monitor"]

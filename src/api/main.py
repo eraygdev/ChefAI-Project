@@ -7,6 +7,7 @@ import io
 import os
 from contextlib import asynccontextmanager
 from pathlib import Path
+from typing import Any
 
 import torch
 from fastapi import FastAPI, File, HTTPException, UploadFile
@@ -168,11 +169,13 @@ def _predict(img: Image.Image) -> Prediction:
     tensor = transformed.unsqueeze(0).to(DEVICE)
     probs = MODEL(tensor).softmax(dim=1)[0]
     top5_probs, top5_idx = probs.topk(5)
-    top5 = [
+    top5: list[dict[str, Any]] = [
         {"class_name": IDX_TO_CLASS[int(i)], "confidence": float(p)}
         for p, i in zip(top5_probs, top5_idx, strict=False)
     ]
-    return Prediction(class_name=top5[0]["class_name"], confidence=top5[0]["confidence"], top5=top5)
+    best_class = IDX_TO_CLASS[int(top5_idx[0])]
+    best_conf = float(top5_probs[0])
+    return Prediction(class_name=best_class, confidence=best_conf, top5=top5)
 
 
 # -------------------------------------------------------------------
